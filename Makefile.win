@@ -1,30 +1,33 @@
 # Project: MarranoFTP
-# Makefile created by Dev-C++ 4.9.9.2
+# Compiler: i686-aros
+# Compiler Type: MingW 3
+# Makefile created by wxDev-C++ 6.10.2 on 30/12/08 21.12
 
-CPP  = i686-aros-g++.exe
-CC   = i686-aros-gcc.exe
-WINDRES = windres.exe
-RES  = 
-OBJ  = main.o $(RES)
-LINKOBJ  = main.o $(RES)
-LIBS =  -L"E:/amigadev/AmiDevCpp/usr/local/amiga/i686-aros/lib" ../CafLib/caflib.a ../../../usr/local/amiga/i686-aros/lib/libmui.a -o marranoftp   -s 
-INCS =  -I"E:/amigadev/AmiDevCpp/usr/local/amiga/i686-aros/sys-include"  -I"E:/amigadev/AmiDevCpp/Sources"  -I"E:/amigadev/AmiDevCpp/Sources/AROS/CafLib/include" 
-CXXINCS =  -I"E:/amigadev/AmiDevCpp/usr/local/amiga/lib/gcc-lib/i686-aros/3.3.1"  -I"E:/amigadev/AmiDevCpp/usr/local/amiga/i686-aros/sys-include"  -I"E:/amigadev/AmiDevCpp/Sources/AROS/CafLib/include" 
-BIN  = MarranoFtp.exe
-CXXFLAGS = $(CXXINCS)   -fexpensive-optimizations -O3
-CFLAGS = $(INCS) -DCPU_LITTLE_ENDIAN -Wall   -fexpensive-optimizations -O3
-RM = rm -f
+CPP       = i686-aros-g++.exe
+CC        = i686-aros-gcc.exe
+WINDRES   = windres.exe
+OBJ       = main.o
+LINKOBJ   = main.o
+LIBS      = -L"S:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/lib" S:/Code/Amiga/AROS/CafLib/CafLib.a -lmui -o ../bin/MarranoFTP  -fmessage-length=0 -s 
+INCS      = -I"S:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/sys-include" -I"S:/Code/Amiga/AROS/CafLib/include"
+CXXINCS   = -I"S:/Code/Amiga/AmiDevCpp/usr/local/amiga/lib/gcc-lib/i686-aros/3.3.1" -I"S:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/sys-include" -I"S:/Code/Amiga/AROS/CafLib/include"
+RCINCS    = --include-dir "S:/Code/Amiga/AMIDEV~1/" --include-dir "S:/Code/Amiga/AMIDEV~1/include/common"
+BIN       = MarranoFtp.exe
+DEFINES   = 
+CXXFLAGS  = $(CXXINCS) $(DEFINES)   -fexpensive-optimizations -O3 -fmessage-length=0
+CFLAGS    = $(INCS) $(DEFINES) -DCPU_LITTLE_ENDIAN -Wall   -fexpensive-optimizations -O3 -fmessage-length=0
+GPROF     = gprof.exe
+RM        = rm -f
+LINK      = i686-aros-g++.exe
 
 .PHONY: all all-before all-after clean clean-custom
-
-all: all-before MarranoFtp.exe all-after
-
+all: all-before $(BIN) all-after
 
 clean: clean-custom
-	${RM} $(OBJ) $(BIN)
+	$(RM) $(OBJ) $(BIN)
 
 $(BIN): $(OBJ)
-	$(CC) $(LINKOBJ) -o "MarranoFtp.exe" $(LIBS)
+	$(LINK) $(LINKOBJ) -o "MarranoFtp.exe" $(LIBS)
 
-main.o: main.c
+main.o: $(GLOBALDEPS) main.c structs.h
 	$(CC) -c main.c -o main.o $(CFLAGS)
