@@ -1,2 +1,2 @@
 # MarranoFTP-Amiga
-An FTP client for the Amiga Platform (AROS/MorphOS)
+A very marrano FTP client for the Amiga Platform (AROS/MorphOS) developed in 2006 with AmiDevCPP.
