@@ -1,0 +1,19 @@
+Changelog
+		
+0.61 	Fixed stupid "upside down" reordering of address book everytime MarranoFTP was started
+		
+	 	Fixed an endianess problem on Morphos version (not yet publicy available)
+		
+	 	MarranoFTP will automatically add port 21 in the port section of address book, everytime
+	 	"new" button is pressed (you can change later of course), Aliem marrano.
+		
+	 	Reordered buttons, now they should be more "KeenEars" friendly :-)
+		
+	 	MarranoFTP will now search for the configuration file in MARRANO: assign,
+	 	PROGDIR: will follow if no config file is found there.
+		
+		Replaced clib file i/o calls with dos library ones, this should help aros users 	
+		
+		Global settings window data is now saved in the configuration file
+		
+0.60 	First public AROS release

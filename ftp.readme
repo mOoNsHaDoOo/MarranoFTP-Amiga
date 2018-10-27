@@ -1,0 +1,28 @@
+MarranoFTP 0.61 - "A very marrano FTP client" - 01/11/2006 01:23 am
+
+Hello dear users,
+
+This is the second public beta of MarranoFTP, before connecting you have to load an entry in the 
+address book, the EntryName can be anything you want, while the hostname
+must be the address of the site you are going to connect, the port is set to 21 by MarranoFTP,
+but you can change it as you want.
+
+After you have inputed the necessary host information don't forget to press the save button,
+it will store in memory the contents of the address book, which will be saved when MarranoFTP
+is quitted. MarranoFTP will try to save the file in two paths, one is PROGDIR: (which is
+the directory where you launch MarranoFTP from) and the other is MARRANO: assign, if those
+two do not exist, you will loose all the inputed entries, so be sure to make the necessary 
+assign or to check if the filesystem you are using supports PROGDIR: (this is valid for the
+Aros version where SFS is currently a bit buggy).
+
+To connect to an host double click it from the address book, some buttons and menu entries do
+not currently do anything, those will be addressed later.
+
+The quit button sends ABOR (if you are transfering a file) and QUIT to the host and wait for an 
+anwser, to quit immediately, regardless of the current status of the connection with the host, just 
+press the top left close window button, don't worry though, MarranoFTP will correctly close any open 
+connection and shutdown all opened sockets, so no harm will be done :-)
+
+Thanks goes to Davide "Turrican" Michelini, for the Marrano icons :-) (Davide is a marrano too!)
+
+suppah
