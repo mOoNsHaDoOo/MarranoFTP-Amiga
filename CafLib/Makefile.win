@@ -1,0 +1,42 @@
+# Project: caflib
+# Compiler: i686-aros
+# Compiler Type: MingW 3
+# Makefile created by wxDev-C++ 6.10.2 on 24/12/07 22.31
+
+CPP       = i686-aros-g++.exe
+CC        = i686-aros-gcc.exe
+WINDRES   = windres.exe
+OBJ       = debugging.o networking_helpers.o thread_helpers.o errors.o
+LINKOBJ   = debugging.o networking_helpers.o thread_helpers.o errors.o
+LIBS      = -L"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/lib"  
+INCS      = -I"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/sys-include" -I"C:/Code/Amiga/AROS/CafLib/include"
+CXXINCS   = -I"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/lib/gcc-lib/i686-aros/3.3.1" -I"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/sys-include" -I"C:/Code/Amiga/AROS/CafLib/include"
+RCINCS    = --include-dir "C:/Code/Amiga/AMIDEV~1/" --include-dir "C:/Code/Amiga/AMIDEV~1/include/common"
+BIN       = caflib.a
+DEFINES   = 
+CXXFLAGS  = $(CXXINCS) $(DEFINES)  
+CFLAGS    = $(INCS) $(DEFINES) -Wall  
+GPROF     = gprof.exe
+RM        = rm -f
+LINK      = ar
+
+.PHONY: all all-before all-after clean clean-custom
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	$(RM) $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(LINK) rcu "$(BIN)" $(LINKOBJ)
+
+debugging.o: $(GLOBALDEPS) debugging.c
+	$(CC) -c debugging.c -o debugging.o $(CFLAGS)
+
+networking_helpers.o: $(GLOBALDEPS) networking_helpers.c
+	$(CC) -c networking_helpers.c -o networking_helpers.o $(CFLAGS)
+
+thread_helpers.o: $(GLOBALDEPS) thread_helpers.c
+	$(CC) -c thread_helpers.c -o thread_helpers.o $(CFLAGS)
+
+errors.o: $(GLOBALDEPS) errors.c
+	$(CC) -c errors.c -o errors.o $(CFLAGS)
