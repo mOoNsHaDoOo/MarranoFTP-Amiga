@@ -78,8 +78,8 @@
  - Listbox selezionabili così posso togliere doppi button per le due differenti listview
  - Mettere il sort da colonna nelle NListe
  - Criptare le password
- 		   
- -  Ottimizzare il download, Write() viene chiamata ad ogni evento socket, mettere in un buffer
+		   
+ -	Ottimizzare il download, Write() viene chiamata ad ogni evento socket, mettere in un buffer
 	i dati e scriverli dopo
 -  <AlieM> devi aggiungere a mFTP anche un controllo sullo spazio disponibile, così (se già lo sai) evita 
    di scaricare file a metà
@@ -110,7 +110,7 @@
 	   goto loop
 
 [00:23] <olivier2222> MUIA_Application_Version, (IPTR) "$VER: MyApp 0.1 (dd.mm.yyyy) © AROS Dev Team"
-[00:24] <olivier2222> MUIA_Application_Description,  __(MSG_DESCRIPTION),
+[00:24] <olivier2222> MUIA_Application_Description,	 __(MSG_DESCRIPTION),
 [00:24] <olivier2222> with __() the macro for localization, in this ex
 [00:24] <olivier2222> because you want the exchange application description field to be localized
 [00:25] <olivier2222> MUIA_Application_Base, (IPTR) "MYAPP"
@@ -169,8 +169,8 @@ enum
 static const char *g_AddressBook_ConnectionTypes[] =
 {
 	"Active",
-    "Passive",
-    NULL
+	"Passive",
+	NULL
 };
 
 static const char *g_GlobalSettings_QueueTypes[] = 
@@ -202,10 +202,10 @@ extern struct Library *MUIMasterBase;
 extern struct IntuitionBase *IntuitionBase;
 #endif
 
-struct Library 		*SocketBase;
-struct Device 	   	*TimerBase;
-struct timerequest 	*g_TimerIO;
-struct MsgPort     	*g_TimerMP;
+struct Library		*SocketBase;
+struct Device		*TimerBase;
+struct timerequest	*g_TimerIO;
+struct MsgPort		*g_TimerMP;
 
 // Const. Strings
 char *STR_CANT_SEND = "STATUS: cannot send command, waiting for ftp response to previous command";
@@ -213,28 +213,28 @@ char *STR_CANT_SEND_NOT_CONNECTED = "STATUS: cannot send command, not connected"
 
 Object	*app;
 
-#define Title(t)        { NM_TITLE, t, NULL, 0, 0, NULL }
-#define Item(t,s,i)     { NM_ITEM, t, s, 0, 0, (APTR)i }
-#define ItemBar         { NM_ITEM, NM_BARLABEL, NULL, 0, 0, NULL }
-#define SubItem(t,s,i)  { NM_SUB, t, s, 0, 0, (APTR)i }
-#define SubBar          { NM_SUB, NM_BARLABEL, NULL, 0, 0, NULL }
-#define EndMenu         { NM_END, NULL, NULL, 0, 0, NULL }
-#define ItCk(t,s,i,f)   { NM_ITEM, t, s, f, 0, (APTR)i }
+#define Title(t)		{ NM_TITLE, t, NULL, 0, 0, NULL }
+#define Item(t,s,i)		{ NM_ITEM, t, s, 0, 0, (APTR)i }
+#define ItemBar			{ NM_ITEM, NM_BARLABEL, NULL, 0, 0, NULL }
+#define SubItem(t,s,i)	{ NM_SUB, t, s, 0, 0, (APTR)i }
+#define SubBar			{ NM_SUB, NM_BARLABEL, NULL, 0, 0, NULL }
+#define EndMenu			{ NM_END, NULL, NULL, 0, 0, NULL }
+#define ItCk(t,s,i,f)	{ NM_ITEM, t, s, f, 0, (APTR)i }
 
 static struct NewMenu Menus[] = {
-  Title( "File" /* File */ ),
-	Item( "Open config file",	NULL, MNID_OPENCONFIG),
-    Item( "Save config file",	NULL, MNID_SAVECONFIG),
-    Item( "Export config file",	NULL, MNID_EXPORTCONFIG),
-    Item( "Import config file",	NULL, MNID_IMPORTCONFIG),
-    ItemBar,
-    Item( "About", NULL, MNID_ABOUT),
-    ItemBar,
-    Item( "Quit", NULL, MNID_QUIT),
-  Title( "Settings" /* Settings */ ),
-    Item( "Global settings",   NULL, MNID_GLOBALSETTINGS   ),
-    Item( "Open address book",   NULL, MNID_OPENADDRESSBOOK   ),
-  EndMenu
+	Title( "File" /* File */ ),
+		Item( "Open config file",	NULL, MNID_OPENCONFIG),
+		Item( "Save config file",	NULL, MNID_SAVECONFIG),
+		Item( "Export config file",	NULL, MNID_EXPORTCONFIG),
+		Item( "Import config file",	NULL, MNID_IMPORTCONFIG),
+		ItemBar,
+			Item( "About", NULL, MNID_ABOUT),
+		ItemBar,
+			Item( "Quit", NULL, MNID_QUIT),
+	Title( "Settings" /* Settings */ ),
+		Item( "Global settings",   NULL, MNID_GLOBALSETTINGS   ),
+		Item( "Open address book",	 NULL, MNID_OPENADDRESSBOOK	  ),
+	EndMenu
 };
 
 #define STACK_BOTTOM (7)
@@ -397,9 +397,9 @@ AROS_UFHA(struct Hook *, hook, A0),
 AROS_UFHA( APTR, obj, A2),
 AROS_UFHA(struct TagItem *, tag_list, A1))
 {
-    AROS_USERFUNC_INIT
-    DebugOutput("HOOK HOOK!\n");
-    AROS_USERFUNC_EXIT
+	AROS_USERFUNC_INIT
+	DebugOutput("HOOK HOOK!\n");
+	AROS_USERFUNC_EXIT
 }
 
 /*
@@ -414,7 +414,7 @@ AROS_UFHA(struct Hook *, hook, A0),
 AROS_UFHA(char **, strings, A2),
 AROS_UFHA(ViewColumn *, data, A1))
 {
-    AROS_USERFUNC_INIT
+	AROS_USERFUNC_INIT
 	
 	if (data) {
 		strings[0] = data->name;
@@ -427,8 +427,8 @@ AROS_UFHA(ViewColumn *, data, A1))
 		strings[2] = "Flags";
 		strings[3] = "Date";
 	}
-    
-    AROS_USERFUNC_EXIT
+	
+	AROS_USERFUNC_EXIT
 }
 
 AROS_UFH3(void, RightViewDispFunc,
@@ -436,7 +436,7 @@ AROS_UFHA(struct Hook *, hook, A0),
 AROS_UFHA(char **, strings, A2),
 AROS_UFHA(ViewColumn *, data, A1))
 {
-    AROS_USERFUNC_INIT
+	AROS_USERFUNC_INIT
 	
 	if (data) {
 		strings[0] = data->name;
@@ -449,8 +449,8 @@ AROS_UFHA(ViewColumn *, data, A1))
 		strings[2] = "Flags";
 		strings[3] = "Date";
 	}
-    
-    AROS_USERFUNC_EXIT
+	
+	AROS_USERFUNC_EXIT
 }
 
 AROS_UFH3(void, QueueViewDispFunc,
@@ -458,7 +458,7 @@ AROS_UFHA(struct Hook *, hook, A0),
 AROS_UFHA(char **, strings, A2),
 AROS_UFHA(QueueColumn *, data, A1))
 {
-    AROS_USERFUNC_INIT
+	AROS_USERFUNC_INIT
 	
 	if (data) {
 		switch(data->command) {
@@ -527,8 +527,8 @@ AROS_UFHA(QueueColumn *, data, A1))
 		strings[1] = "Name";
 		strings[2] = "Status";
 	}
-    
-    AROS_USERFUNC_EXIT
+	
+	AROS_USERFUNC_EXIT
 }
 
 #endif
@@ -730,7 +730,7 @@ static bool OpenLibs()
 		printf("Failed to open Muimaster library\n");
 		return false;
 	}
-    
+	
 	#ifdef DEBUGLV3
 	DebugOutput("OpenLibs(): Opened Muimaster library\n");
 	#endif
@@ -783,7 +783,7 @@ static bool CloseLibs()
 	
 	if (g_TimerMP) {
 		DeleteMsgPort(g_TimerMP);
-     	g_TimerMP = 0;
+		g_TimerMP = 0;
 	}
 	
 	#ifndef __AROS__
@@ -851,14 +851,14 @@ static bool Init()
 	#define QUEUE_BUFFER_SIZE (512*1024)
 	#define TEMP_BUFFER_SIZE (256*1024)
 	
-	cn->cmd_buffer.size 	 	= COMMAND_BUFFER_SIZE;
-	cn->transfer_buffer.size 	= TRANSFER_BUFFER_SIZE;
+	cn->cmd_buffer.size			= COMMAND_BUFFER_SIZE;
+	cn->transfer_buffer.size	= TRANSFER_BUFFER_SIZE;
 	cn->queue_buffer.size		= QUEUE_BUFFER_SIZE;
 	cn->temp_buffer.size		= TEMP_BUFFER_SIZE;
-	cn->cmd_buffer.ptr 		 	= malloc(COMMAND_BUFFER_SIZE);
-	cn->transfer_buffer.ptr    	= malloc(TRANSFER_BUFFER_SIZE);
+	cn->cmd_buffer.ptr			= malloc(COMMAND_BUFFER_SIZE);
+	cn->transfer_buffer.ptr		= malloc(TRANSFER_BUFFER_SIZE);
 	cn->queue_buffer.ptr		= malloc(QUEUE_BUFFER_SIZE);
-	cn->temp_buffer.ptr 		= malloc(TEMP_BUFFER_SIZE);
+	cn->temp_buffer.ptr			= malloc(TEMP_BUFFER_SIZE);
 	
 	caf_memset(lv, 0, sizeof(LocalView));
 	lv->ListBuffer.size = LIST_BUFFER_SIZE;
@@ -866,7 +866,7 @@ static bool Init()
 	
 	caf_memset(rv, 0, sizeof(RemoteView));
 	rv->ListBuffer.size = LIST_BUFFER_SIZE;
-	rv->ListBuffer.ptr  = malloc(LIST_BUFFER_SIZE); 
+	rv->ListBuffer.ptr	= malloc(LIST_BUFFER_SIZE); 
 	
 	if (cn->cmd_buffer.ptr == 0) {
 		printf("Command buffer allocation failed\n");
@@ -962,12 +962,12 @@ int main(int argc,char *argv[])
 	APTR MUIMenu;
 	IPTR iresult;
 	
-    if (Init() == false)
+	if (Init() == false)
 		return RETURN_FAIL;
 	
 	strcpy(cn->lv.CurrentPath, "ram:");
-    
-	/* MUI Gui Definition */    
+	
+	/* MUI Gui Definition */	
 	app = ApplicationObject,
 		MUIA_Application_Title, (IPTR) "MarranoFTP",
 		MUIA_Application_Version, (IPTR) "$VER: MarranoFTP 0.66 (29.03.2008 15:56 am) © Stefano Crosara aka Suppah at marranosoft@gmail.com",
@@ -996,8 +996,8 @@ int main(int argc,char *argv[])
 								MUIA_List_ConstructHook, MUIV_NList_ConstructHook_String,
 								MUIA_List_DestructHook, MUIV_NList_DestructHook_String,
 								MUIA_List_AutoVisible, TRUE,
-    	    				    End, // NListObject
-	       					End, // NListviewObject
+								End, // NListObject
+							End, // NListviewObject
 						End, // HGroup
 					
 					Child, HGroup,
@@ -1014,11 +1014,11 @@ int main(int argc,char *argv[])
 									MUIA_Font, MUIV_Font_Fixed,
 									MUIA_NList_DisplayHook, &LeftViewDispHook,
 									MUIA_NList_Title, TRUE,
-						            MUIA_NList_TitleSeparator, TRUE,
+									MUIA_NList_TitleSeparator, TRUE,
 									MUIA_NList_AutoVisible, TRUE,
-						            MUIA_NList_EntryValueDependent, TRUE,
+									MUIA_NList_EntryValueDependent, TRUE,
 									MUIA_NList_MinColSortable, 0,
-    							End, // NListObject
+								End, // NListObject
 							End, // NListviewObject
 						End, // VGroup
 						
@@ -1034,18 +1034,18 @@ int main(int argc,char *argv[])
 									MUIA_Font, MUIV_Font_Fixed,
 									MUIA_NList_DisplayHook, &RightViewDispHook,
 									MUIA_NList_Title, TRUE,
-						            MUIA_NList_TitleSeparator, TRUE,
+									MUIA_NList_TitleSeparator, TRUE,
 									MUIA_NList_AutoVisible, TRUE,
-						            MUIA_NList_EntryValueDependent, TRUE,
+									MUIA_NList_EntryValueDependent, TRUE,
 									MUIA_NList_MinColSortable, 0,
-	    					    End, // NListObject
-	    					End, // NListviewObject
+								End, // NListObject
+							End, // NListviewObject
 						End, // VGroup
 					End, // HGroup
 					
 					Child, VGroup,
 						MUIA_Weight, 20,
-    					Child, TextObject, MUIA_Text_Contents, "Transfer Queue", End,
+						Child, TextObject, MUIA_Text_Contents, "Transfer Queue", End,
 						
 						Child, cn->QueueLV = NListviewObject, 
 							MUIA_NListview_NList, NListObject,
@@ -1056,15 +1056,15 @@ int main(int argc,char *argv[])
 							MUIA_Font, MUIV_Font_Fixed,
 							MUIA_NList_DisplayHook, &QueueDisplayHook,
 							MUIA_NList_Title, TRUE,
-				            MUIA_NList_TitleSeparator, TRUE,
+							MUIA_NList_TitleSeparator, TRUE,
 							MUIA_NList_AutoVisible, TRUE,
-				            MUIA_NList_EntryValueDependent, TRUE,
+							MUIA_NList_EntryValueDependent, TRUE,
 							MUIA_NList_MinColSortable, 0,
-	   					    End, // NListObject
-	   					End, // NListviewObject
-   					End, // VGroup
+							End, // NListObject
+						End, // NListviewObject
+					End, // VGroup
 					
-					Child, cn->S_TRANSFER_INFO = 	StringObject, StringFrame, 
+					Child, cn->S_TRANSFER_INFO =	StringObject, StringFrame, 
 												MUIA_InputMode, MUIV_InputMode_None,
 												MUIA_String_Accept, "",
 												MUIA_String_MaxLen, 512, 
@@ -1075,63 +1075,63 @@ int main(int argc,char *argv[])
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Download  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Download	 ", End,
 						End,
 							
 						Child, cn->BTN_UPLOAD = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Upload  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Upload  ", End,
 						End,
 							
 						Child, cn->BTN_DELETE = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Delete  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Delete  ", End,
 						End,
 						
 						Child, cn->BTN_STOP = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Stop  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Stop	 ", End,
 						End,
 						
 						Child, cn->BTN_RUN_QUEUE = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Run Queue  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Run Queue  ", End,
 						End,
 						
 						Child, cn->BTN_STEP_QUEUE = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Step Queue  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Step Queue  ", End,
 						End,
 						
 						Child, cn->BTN_CLEAR_QUEUE = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Clear Queue  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Clear Queue	", End,
 						End,
 						
 						Child, cn->BTN_RENAME = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Rename  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Rename  ", End,
 						End,
 							
 						Child, cn->BTN_MAKEDIR = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Makedir  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Makedir	", End,
 						End,
 						
 						//
@@ -1150,28 +1150,28 @@ int main(int argc,char *argv[])
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Disconnect  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Disconnect  ", End,
 						End,
 						
 						Child, cn->BTN_QUIT = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Quit  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  Quit	 ", End,
 						End,
 						
 						Child, cn->BTN_REFRESH_L = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  RefreshL  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  RefreshL	 ", End,
 						End,
 							
 						Child, cn->BTN_REFRESH_R = HGroup,
 							ButtonFrame,
 							MUIA_InputMode , MUIV_InputMode_RelVerify,
 							MUIA_Background, MUII_ButtonBack,
-							Child, 	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  RefreshR  ", End,
+							Child,	TextObject, MUIA_CycleChain, 1, MUIA_Text_Contents, "\33c  RefreshR	 ", End,
 						End,
 					End,
 				End,
@@ -1191,56 +1191,56 @@ int main(int argc,char *argv[])
 									MUIA_CycleChain, 1, 
 									ReadListFrame,
 									MUIA_List_AutoVisible, TRUE,
-		    				    End,
-		    			End,
-	    			End,
+								End,
+						End,
+					End,
 					
 					Child, HGroup, 
-		    			Child, VGroup,
-		    				Child, HGroup,
-		    					MUIA_Weight, 70,
-		    					Child, TextObject, MUIA_Text_Contents, "Entry name", End,
-	    					End,
-	    					
+						Child, VGroup,
 							Child, HGroup,
 								MUIA_Weight, 70,
-    							Child, g_AddressBook.S_ENTRYNAME = (APTR) StringObject, MUIA_CycleChain, 1, StringFrame, MUIA_String_MaxLen, 128, End,
-    						End,
+								Child, TextObject, MUIA_Text_Contents, "Entry name", End,
+							End,
 							
-		    				Child, HGroup,
-		    					Child, HGroup,
-		    						MUIA_Weight, 70,
-		    						Child, TextObject, MUIA_Text_Contents, "Address", End,
-		    					End,
-		    					Child, HGroup,
-		    						MUIA_Weight, 20,
-		    						Child, TextObject, MUIA_Text_Contents, "Port", End,
-		    					End,
-		    				End,
-		    				
+							Child, HGroup,
+								MUIA_Weight, 70,
+								Child, g_AddressBook.S_ENTRYNAME = (APTR) StringObject, MUIA_CycleChain, 1, StringFrame, MUIA_String_MaxLen, 128, End,
+							End,
+							
+							Child, HGroup,
+								Child, HGroup,
+									MUIA_Weight, 70,
+									Child, TextObject, MUIA_Text_Contents, "Address", End,
+								End,
+								Child, HGroup,
+									MUIA_Weight, 20,
+									Child, TextObject, MUIA_Text_Contents, "Port", End,
+								End,
+							End,
+							
 							Child, HGroup, 
 								Child, HGroup,
 									MUIA_Weight, 70,
-		    						Child, g_AddressBook.S_HOSTNAME	 = (APTR) StringObject, MUIA_CycleChain, 1, StringFrame, MUIA_String_MaxLen, 128, End,
-		    					End,
-			    				Child, HGroup,
-			    					MUIA_Weight, 20,
+									Child, g_AddressBook.S_HOSTNAME	 = (APTR) StringObject, MUIA_CycleChain, 1, StringFrame, MUIA_String_MaxLen, 128, End,
+								End,
+								Child, HGroup,
+									MUIA_Weight, 20,
 									Child, g_AddressBook.S_PORT		 = (APTR) StringObject, MUIA_CycleChain, 1, StringFrame, MUIA_String_MaxLen, 8, End,
 								End,
-			    			End, 
+							End, 
 							
 							Child, TextObject, MUIA_Text_Contents, "Username", End,
-	    					Child, g_AddressBook.S_USERNAME  = (APTR) StringObject, MUIA_CycleChain, 1,StringFrame, MUIA_String_MaxLen, 32, End,
-    						Child, TextObject, MUIA_Text_Contents, "Password", End,
-	    					Child, g_AddressBook.S_PASSWORD  = (APTR) StringObject, MUIA_CycleChain, 1,StringFrame, MUIA_String_MaxLen, 32, End,
-		    			End,	
+							Child, g_AddressBook.S_USERNAME	 = (APTR) StringObject, MUIA_CycleChain, 1,StringFrame, MUIA_String_MaxLen, 32, End,
+							Child, TextObject, MUIA_Text_Contents, "Password", End,
+							Child, g_AddressBook.S_PASSWORD	 = (APTR) StringObject, MUIA_CycleChain, 1,StringFrame, MUIA_String_MaxLen, 32, End,
+						End,	
 					End,
 					
-    				Child, HGroup,
-    					Child, VGroup,
-    						Child, TextObject, MUIA_Text_Contents, "Transfer type", End,
-    						Child, g_AddressBook.RDIO_CONN_TYPE = RadioObject,
-    							MUIA_Group_Horiz, TRUE,
+					Child, HGroup,
+						Child, VGroup,
+							Child, TextObject, MUIA_Text_Contents, "Transfer type", End,
+							Child, g_AddressBook.RDIO_CONN_TYPE = RadioObject,
+								MUIA_Group_Horiz, TRUE,
 								MUIA_Radio_Entries, g_AddressBook_ConnectionTypes,
 							End,
 						End,
@@ -1316,14 +1316,14 @@ int main(int argc,char *argv[])
 											StringFrame, MUIA_String_MaxLen, 3, End,
 					
 					Child, TextObject, MUIA_Text_Contents, "\33cQueue Processing", End,
-   					Child, g_GlobalSettings.RDIO_QUEUE_TYPE = RadioObject,
-   						MUIA_Group_Horiz, TRUE,
+					Child, g_GlobalSettings.RDIO_QUEUE_TYPE = RadioObject,
+						MUIA_Group_Horiz, TRUE,
 						MUIA_Radio_Entries, g_GlobalSettings_QueueTypes,
 					End,
 					
 					Child, TextObject, MUIA_Text_Contents, "\33cPartial files", End,
-   					Child, g_GlobalSettings.RDIO_DELETE_PARTIAL = RadioObject,
-   						MUIA_Group_Horiz, TRUE,
+					Child, g_GlobalSettings.RDIO_DELETE_PARTIAL = RadioObject,
+						MUIA_Group_Horiz, TRUE,
 						MUIA_Radio_Entries, g_GlobalSettings_DeletePartial,
 					End,
 					
@@ -1395,7 +1395,7 @@ int main(int argc,char *argv[])
 /*	Blah
 	
 	DoMethod(BTN_DUMP, MUIM_Notify, MUIA_Pressed, FALSE, app, 2, MUIM_Application_ReturnID, ID_DUMP);
-//  Can't get those bitches to work under aros
+//	Can't get those bitches to work under aros
 	DoMethod(S_LEFT_VIEW_PATH, MUIM_Notify, MUIA_String_Contents, MUIV_EveryTime, app, 2, MUIM_CallHook, &KeyPressHook);
 	DoMethod(S_RIGHT_VIEW_PATH, MUIM_Notify, MUIA_String_Contents, MUIV_EveryTime, app, 2, MUIM_CallHook, &KeyPressHook);
 */
@@ -1516,7 +1516,7 @@ int main(int argc,char *argv[])
 								// very old.. maybe a connection problem ? let's close the
 								// transfer socket
 								if (ci->b_file_download) {
-                                    AbortFileTransfer(cn);
+									AbortFileTransfer(cn);
 									// SendFtpCommand(cn, "ABOR", false);
 									MUI_AddStatusWindow(cn, "STATUS: Closing transfer socket, data timeout, no more data was received in a timely fashion");
 								} else
@@ -1608,10 +1608,10 @@ int main(int argc,char *argv[])
 									cn->ci.b_waitingfordataport = false;
 									
 									// if (cn->ci.b_file_transfer == false) {
-	       								// ASD, this send has to be fixed ?
-	   	       							// should i wait for write flag in socket?
-    									send(ci->transfer_socket, "\n\n", 2, 0);
-                                    // }
+										// ASD, this send has to be fixed ?
+										// should i wait for write flag in socket?
+										send(ci->transfer_socket, "\n\n", 2, 0);
+									// }
 								}
 							} else {
 /********************************************* ACCEPT *****************************************/
@@ -1646,8 +1646,8 @@ int main(int argc,char *argv[])
 						#endif
 						
 						optlen = sizeof(ret);
-		    		    getsockopt (ci->cmd_socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
-		    		    #ifdef DEBUGLV3
+						getsockopt (ci->cmd_socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
+						#ifdef DEBUGLV3
 						printf("\nMainLoop(): Error code(ret) = %d string = '%s'\n", ret, GetErrnoDesc(ret));
 						printf("\nMainLoop(): Error code(errno) = %d string = '%s'\n", local_errno, GetErrnoDesc(local_errno));
 						printf("\nMainLoop(): Error code(sel_sock) = %d string = '%s'\n", sel_sock, GetErrnoDesc(sel_sock));
@@ -1689,18 +1689,18 @@ int main(int argc,char *argv[])
 						// Stop the command queue
 						ci->b_processing_queue = false;
 						if (cn->ci.b_transfering) {
-                            AbortFileTransfer(cn);
-                            /* This code has been superseded by AbortFileTransfer() which
-                               implements it as
-                            
-                            if (ci->b_passive == false)
-    							SendFtpCommand(cn, "ABOR", false);
-    						else {
-    							InvalidateSocket(&cn->ci.transfer_socket);
-    							ci->b_transfer_error = true;
-    							ci->b_transfering = false;
-                            }
-                            */
+							AbortFileTransfer(cn);
+							/* This code has been superseded by AbortFileTransfer() which
+							   implements it as
+							
+							if (ci->b_passive == false)
+								SendFtpCommand(cn, "ABOR", false);
+							else {
+								InvalidateSocket(&cn->ci.transfer_socket);
+								ci->b_transfer_error = true;
+								ci->b_transfering = false;
+							}
+							*/
 						} else if (cn->ci.b_connecting) {
 							InvalidateSocket(&cn->ci.cmd_socket);
 							cn->ci.b_connecting = false;
@@ -1912,7 +1912,7 @@ void HandleDownload(Connection *cn)
 			AbortFileTransfer(cn);
 			// SendFtpCommand(cn, "ABOR", false);
 		}
-        
+		
 		res = recv(ci->transfer_socket, &cn->transfer_buffer.ptr[ci->bytes_transfered], 65535, 0);
 	} else {
 		#ifdef DEBUG
@@ -2017,8 +2017,8 @@ void HandleUpload(Connection *cn)
 		ci->b_file_transfer = false;
 		Close(ci->filehandle);
 		ci->filehandle = 0;
-        
-        AbortFileTransfer(cn);
+		
+		AbortFileTransfer(cn);
 		// SendFtpCommand(cn, "ABOR", false);
 		sprintf(temp, "ERROR: Transfer failed, '%d' error during file read", local_errno);
 		MUI_AddStatusWindow(cn, temp);
@@ -2059,7 +2059,7 @@ void HandleUpload(Connection *cn)
 /*
 bool FtpConnect(Connection *cn)
 {
- 	int ret, status, socket = 1, optlen;
+	int ret, status, socket = 1, optlen;
 	struct sockaddr_in sockaddr;
 	ClientInfo *ci = &cn->ci;
 	HostInfo *hi = &cn->hi;
@@ -2147,14 +2147,14 @@ bool FtpConnect(Connection *cn)
 				#endif
 				GetConnectionInfo(ci);
 			} else if (ret == SOCKET_ERROR) {
-	    	    #ifdef DEBUG
+				#ifdef DEBUG
 				int local_errno = errno;
 				#endif
 				
 				optlen = sizeof(ret);
-	    	    getsockopt (socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
-	    	    
-	    	    #ifdef DEBUG
+				getsockopt (socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
+				
+				#ifdef DEBUG
 				DebugOutput(GetErrnoDesc(ret));
 				printf("\nError code = %d\n", ret);
 				DebugOutput(GetErrnoDesc(local_errno));
@@ -2274,12 +2274,12 @@ bool FtpConnect(Connection *cn)
 
 int SockConnect(CSOCK *csock)
 {
- 	int ret, status, socket = 1;
+	int ret, status, socket = 1;
 	struct sockaddr_in sockaddr;
 	
 	csock->socket = INVALID_SOCKET;
 	csock->csockerr = 0;
-	csock->sockerr  = 0;
+	csock->sockerr	= 0;
 	
 	if (csock->ip_i == 0 || csock->port == 0) {
 		csock->csockerr = CSOCKERR_WRONGPARAMS;
@@ -2350,7 +2350,7 @@ int SockConnect(CSOCK *csock)
 				#endif
 				
 				csock->csockerr = CSOCKERR_NATIVE;
-				csock->sockerr  = ret;
+				csock->sockerr	= ret;
 				csock->socket = socket;
 				return CSOCKSTATUS_ERROR;
 			} else if (ret == 0) {
@@ -2363,7 +2363,7 @@ int SockConnect(CSOCK *csock)
 				return CSOCKSTATUS_EARLYCONNECT;
 			} else {
 				csock->csockerr = CSOCKERR_NATIVE;
-				csock->sockerr  = errno;
+				csock->sockerr	= errno;
 				csock->socket = socket;
 				return CSOCKSTATUS_ERROR;
 			}
@@ -2377,14 +2377,14 @@ int SockConnect(CSOCK *csock)
 
 bool CheckSocket(SOCKET socket)
 {
- 	int ret, optlen;
+	int ret, optlen;
 	#ifdef DEBUGLV2
 	char temp[512];
 	#endif
 	
 	// Let's check SO_ERROR
 	optlen = sizeof(ret);
-    if (getsockopt (socket, SOL_SOCKET, SO_ERROR, &ret, &optlen) != SOCKET_ERROR) {
+	if (getsockopt (socket, SOL_SOCKET, SO_ERROR, &ret, &optlen) != SOCKET_ERROR) {
 		if (ret == 0) {
 			#ifdef DEBUGLV2
 			DebugOutput("CheckSocket(): getsockopt() no error\n");
@@ -2413,13 +2413,13 @@ bool CheckConnect(Connection *cn)
 	ClientInfo *ci = &cn->ci;
 	HostInfo   *hi = &cn->hi;
 	bool b_retflag = false;
- 	int ret, optlen;
+	int ret, optlen;
 	char temp[512];
 	
 	// Socket has returned Writeable, but we still do not known if connect worked
 	// we need to check SO_ERROR as well
 	optlen = sizeof(ret);
-    getsockopt (ci->cmd_socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
+	getsockopt (ci->cmd_socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
 	if (ret == 0) {
 		snprintf(temp, 511, "STATUS: Connected to %s", hi->hostname);
 		MUI_AddStatusWindow(cn, temp);
@@ -2504,7 +2504,7 @@ int FtpDisconnect(Connection *cn)
 	if (ci->b_transfering) {
 		// If we are transfering a file, let's abort it
 		AbortFileTransfer(cn);
-        // SendFtpCommand(cn, "ABOR", false);
+		// SendFtpCommand(cn, "ABOR", false);
 		ci->b_request_disconn = true;
 	} else {
 		// Otherwise, just quit
@@ -2839,7 +2839,7 @@ void ProcessCommand(Connection *cn, int command, int *mui_res)
 			cn->ci.b_can_send_command = true;
 			if (IsLastSentCmd("CONN")) {
 				caf_strncpy(temp, "user ", 511);	
-                caf_strncat(temp, hi->username, 511);
+				caf_strncat(temp, hi->username, 511);
 				SendFtpCommand(cn, temp, false);
 			} else if (IsLastSentCmd("pass")) {
 				cn->ci.b_pass_accepted = true;
@@ -2874,7 +2874,7 @@ void ProcessCommand(Connection *cn, int command, int *mui_res)
 			} else if (IsLastSentCmd("PORT") || IsLastSentCmd("PASV")) {
 				b_goon = true;
 				if (hi->conn_type == CTYPE_PASV) {
-                    #ifdef DEBUG
+					#ifdef DEBUG
 					printf("conn_type = CTYPE_PASV\n");
 					#endif
 					
@@ -2889,9 +2889,9 @@ void ProcessCommand(Connection *cn, int command, int *mui_res)
 							ci->b_waitingfordataport = true;
 							StartTimer(&g_listen_timer);
 							b_goon = true;
-                            #ifdef DEBUG
-	   				        printf("PasvConnection(): CSOCKSTATUS_EARLYCONNECT\n");
-                            #endif
+							#ifdef DEBUG
+							printf("PasvConnection(): CSOCKSTATUS_EARLYCONNECT\n");
+							#endif
 						} else if (ret == CSOCKSTATUS_PENDING) {
 							// connect() is in progress, pending...
 							// we have to wait the socket in the select() loop
@@ -2899,9 +2899,9 @@ void ProcessCommand(Connection *cn, int command, int *mui_res)
 							ci->b_waitingfordataport = true;
 							StartTimer(&g_listen_timer);
 							b_goon = true;
-                            #ifdef DEBUG
-	   				        printf("PasvConnection(): CSOCKSTATUS_PENDING\n");
-                            #endif
+							#ifdef DEBUG
+							printf("PasvConnection(): CSOCKSTATUS_PENDING\n");
+							#endif
 						} else if (ret == CSOCKSTATUS_ERROR) {
 							// connect() failed
 							DisplaySockErrs(cn, &cn->hi.pasvsettings);
@@ -2985,7 +2985,7 @@ void ProcessCommand(Connection *cn, int command, int *mui_res)
 
 bool OpenListenSocket(Connection *cn)
 {
- 	int status, socket = INVALID_SOCKET, ret;
+	int status, socket = INVALID_SOCKET, ret;
 	struct sockaddr_in sockaddr;
 	ClientInfo *ci = &cn->ci;
 	bool b_ret = false;
@@ -3181,67 +3181,67 @@ bool RefreshLocalView(Connection *cn)
 	lock = Lock(path, ACCESS_READ);
 	if (lock) {
 		if (Examine(lock, fib) != FALSE) {
-            if (fib->fib_DirEntryType == ST_USERDIR || fib->fib_DirEntryType == ST_ROOT) {
-                // Sets the current directory in local structures
-            	lastchar = caf_getlastchar((char *) itemp);
-            	if (lastchar != '/' && lastchar != ':') {
-            		caf_strncat(path, "/", 512);
-            		set(cn->S_LEFT_VIEW_PATH, MUIA_String_Contents, path);
-            		strcpy(cn->lv.CurrentPath, path);
-            	}
-                
-        		// Make the list quiet and clear it
-                set(lv->ListView, MUIA_NList_Quiet, TRUE);
-                MUI_ClearListbox(lv->ListView);
-                
-        		// Open the listview buffer
-        		BufferOpen(&lv->ListBuffer, true);
-                
-    			while ((ExNext(lock, fib) != DOSFALSE)) {
-    				vc.name = BufferAddStr(&lv->ListBuffer, fib->fib_FileName);
-    				if (fib->fib_DirEntryType == ST_USERDIR) {
-    					vc.size = BufferAddStr(&lv->ListBuffer, "<DIR>");
-    				} else {
-    					snprintf(temp, 511, "%ld", fib->fib_Size);
-    					vc.size = BufferAddStr(&lv->ListBuffer, temp);
-    				}
-    				
-    				DecodeBitFlags(temp, fib->fib_Protection);
-    				vc.flags = BufferAddStr(&lv->ListBuffer, temp);
-    				DateStampToStr(temp, &fib->fib_Date);
-    				vc.date = BufferAddStr(&lv->ListBuffer, temp);
-    				if (fib->fib_DirEntryType == ST_USERDIR)
-    					vc.is_dir = true;
-    				else
-    					vc.is_dir = false;
-    				
-    				vcptr = BufferAddStruct(&lv->ListBuffer, &vc, sizeof(ViewColumn));
-    				
-    				if (vc.name == 0 || vc.size == 0 || vc.flags == 0 || vc.date == 0 || vcptr == 0) {
-    					MUI_AddStatusWindow(cn, "ERROR: Local listview buffer full, cannot continue directory scan");
-    					break;
-    				}
-    				
-    				if (fib->fib_DirEntryType == ST_USERDIR)
-    					DoMethod(lv->ListView, MUIM_NList_InsertSingle, (IPTR *) vcptr, MUIV_NList_Insert_Top);
-    				else
-    					DoMethod(lv->ListView, MUIM_NList_InsertSingle, (IPTR *) vcptr, MUIV_NList_Insert_Bottom);
-    			}
-    			
-    			// Add CDUP
-    			vc.name = "..";
-    			vc.size = BufferAddStr(&lv->ListBuffer, "<DIR>");
-    			vc.flags = "RWED";
-    			vc.date = "N/A";
-    			vc.is_dir = true;
-    			vcptr = BufferAddStruct(&lv->ListBuffer, &vc, sizeof(ViewColumn));
-    			if (vcptr)
-    				DoMethod(lv->ListView, MUIM_NList_InsertSingle, (IPTR *) vcptr, MUIV_NList_Insert_Top);
-            } else {
-                snprintf(temp, 512, "LOCAL: Examine() failed, the specified path is not a directory, fib->fib_DirEntryType = %d", fib->fib_DirEntryType);
-                MUI_AddStatusWindow(cn, temp);
-           		set(cn->S_LEFT_VIEW_PATH, MUIA_String_Contents, cn->lv.CurrentPath);
-            }
+			if (fib->fib_DirEntryType == ST_USERDIR || fib->fib_DirEntryType == ST_ROOT) {
+				// Sets the current directory in local structures
+				lastchar = caf_getlastchar((char *) itemp);
+				if (lastchar != '/' && lastchar != ':') {
+					caf_strncat(path, "/", 512);
+					set(cn->S_LEFT_VIEW_PATH, MUIA_String_Contents, path);
+					strcpy(cn->lv.CurrentPath, path);
+				}
+				
+				// Make the list quiet and clear it
+				set(lv->ListView, MUIA_NList_Quiet, TRUE);
+				MUI_ClearListbox(lv->ListView);
+				
+				// Open the listview buffer
+				BufferOpen(&lv->ListBuffer, true);
+				
+				while ((ExNext(lock, fib) != DOSFALSE)) {
+					vc.name = BufferAddStr(&lv->ListBuffer, fib->fib_FileName);
+					if (fib->fib_DirEntryType == ST_USERDIR) {
+						vc.size = BufferAddStr(&lv->ListBuffer, "<DIR>");
+					} else {
+						snprintf(temp, 511, "%ld", fib->fib_Size);
+						vc.size = BufferAddStr(&lv->ListBuffer, temp);
+					}
+					
+					DecodeBitFlags(temp, fib->fib_Protection);
+					vc.flags = BufferAddStr(&lv->ListBuffer, temp);
+					DateStampToStr(temp, &fib->fib_Date);
+					vc.date = BufferAddStr(&lv->ListBuffer, temp);
+					if (fib->fib_DirEntryType == ST_USERDIR)
+						vc.is_dir = true;
+					else
+						vc.is_dir = false;
+					
+					vcptr = BufferAddStruct(&lv->ListBuffer, &vc, sizeof(ViewColumn));
+					
+					if (vc.name == 0 || vc.size == 0 || vc.flags == 0 || vc.date == 0 || vcptr == 0) {
+						MUI_AddStatusWindow(cn, "ERROR: Local listview buffer full, cannot continue directory scan");
+						break;
+					}
+					
+					if (fib->fib_DirEntryType == ST_USERDIR)
+						DoMethod(lv->ListView, MUIM_NList_InsertSingle, (IPTR *) vcptr, MUIV_NList_Insert_Top);
+					else
+						DoMethod(lv->ListView, MUIM_NList_InsertSingle, (IPTR *) vcptr, MUIV_NList_Insert_Bottom);
+				}
+				
+				// Add CDUP
+				vc.name = "..";
+				vc.size = BufferAddStr(&lv->ListBuffer, "<DIR>");
+				vc.flags = "RWED";
+				vc.date = "N/A";
+				vc.is_dir = true;
+				vcptr = BufferAddStruct(&lv->ListBuffer, &vc, sizeof(ViewColumn));
+				if (vcptr)
+					DoMethod(lv->ListView, MUIM_NList_InsertSingle, (IPTR *) vcptr, MUIV_NList_Insert_Top);
+			} else {
+				snprintf(temp, 512, "LOCAL: Examine() failed, the specified path is not a directory, fib->fib_DirEntryType = %d", fib->fib_DirEntryType);
+				MUI_AddStatusWindow(cn, temp);
+				set(cn->S_LEFT_VIEW_PATH, MUIA_String_Contents, cn->lv.CurrentPath);
+			}
 		} else {
 			MUI_AddStatusWindow(cn, "LOCAL: Examine() failed, cannot get directory listing");
 			b_ret = false;
@@ -3560,23 +3560,23 @@ void ClearTransferFlags(Connection *cn)
 bool AbortFileTransfer(Connection *cn)
 {
 	if (cn->ci.b_transfering) {
-        if (cn->ci.b_passive == false)
-    	   SendFtpCommand(cn, "ABOR", false);
-    	else {
-    		InvalidateSocket(&cn->ci.transfer_socket);
-    		cn->ci.b_transfer_error = false;
-    		cn->ci.b_transfering = false;
+		if (cn->ci.b_passive == false)
+		   SendFtpCommand(cn, "ABOR", false);
+		else {
+			InvalidateSocket(&cn->ci.transfer_socket);
+			cn->ci.b_transfer_error = false;
+			cn->ci.b_transfering = false;
 			MUI_AddStatusWindow(cn, "STATUS: Transfer aborted by user");
 			SentStackPush("ABOR");
-            CloseDataSocket(cn);
-        }
-    }
-    
-    #ifdef DEBUG
-    printf("WARNING: AbortFileTransfer() was called but no file transfer is in progress\n");
-    #endif
-    
-    return true;
+			CloseDataSocket(cn);
+		}
+	}
+	
+	#ifdef DEBUG
+	printf("WARNING: AbortFileTransfer() was called but no file transfer is in progress\n");
+	#endif
+	
+	return true;
 }
 
 /* General utility functions */
@@ -3616,9 +3616,9 @@ bool QueuePush(Connection *cn, int command, char *data, char *c_arg1, int i_arg1
 	}
 	
 	cn->QueuedItems[cn->queue_used].command = command;
-	cn->QueuedItems[cn->queue_used].data 	= data;
-	cn->QueuedItems[cn->queue_used].c_arg1 	= c_arg1;
-	cn->QueuedItems[cn->queue_used].i_arg1 	= i_arg1;
+	cn->QueuedItems[cn->queue_used].data	= data;
+	cn->QueuedItems[cn->queue_used].c_arg1	= c_arg1;
+	cn->QueuedItems[cn->queue_used].i_arg1	= i_arg1;
 	cn->QueuedItems[cn->queue_used].b_local_cmd = b_local_cmd;
 	cn->queue_used++;
 	
@@ -3673,11 +3673,11 @@ void QueueProcess(Connection *cn)
 	}
 	
 	switch (cn->QueuedItems[cn->queue_cur].command) {
-		case 	CMD_DOWNLOAD:
+		case	CMD_DOWNLOAD:
 				InitiateFileTransfer(cn, cn->QueuedItems[cn->queue_cur].data, true);
 				break;
 				
-		case 	CMD_UPLOAD:
+		case	CMD_UPLOAD:
 				InitiateFileTransfer(cn, cn->QueuedItems[cn->queue_cur].data, false);
 				break;
 				
@@ -3685,23 +3685,23 @@ void QueueProcess(Connection *cn)
 				InitiateFileDeletion(cn, cn->QueuedItems[cn->queue_cur].data);
 				break;
 				
-		case 	CMD_LOCAL_MKDIR:
+		case	CMD_LOCAL_MKDIR:
 				LocalMakedir(cn, cn->QueuedItems[cn->queue_cur].data);
 				break;
-                
-		case 	CMD_REMOTE_MKDIR:
+				
+		case	CMD_REMOTE_MKDIR:
 				RemoteMakedir(cn, cn->QueuedItems[cn->queue_cur].data);
 				break;
 				
-		case 	CMD_LOCAL_BASEPATH:
+		case	CMD_LOCAL_BASEPATH:
 				LocalBasePath(cn, cn->QueuedItems[cn->queue_cur].data);
 				break;
-                
-		case 	CMD_LOCAL_DIR_SCAN:
+				
+		case	CMD_LOCAL_DIR_SCAN:
 				LocalDirScan(cn, cn->QueuedItems[cn->queue_cur].data, cn->QueuedItems[cn->queue_cur].data, caf_strlen(cn->QueuedItems[cn->queue_cur].data));
 				break;
 				
-		case 	CMD_REMOTE_DIR_SCAN:
+		case	CMD_REMOTE_DIR_SCAN:
 				// ASD
 				RemoteDirScan(cn, cn->QueuedItems[cn->queue_cur].data);
 				break;
@@ -4180,11 +4180,11 @@ void LoadConfig()
 	if (fp) {
 		if (!feof(fp)) {
 			do {
-				fgets(g_AddressBook.Hosts[i].hostname	, 128, 	fp);
-				fgets(g_AddressBook.Hosts[i].port		, 8, 	fp);
-				fgets(g_AddressBook.Hosts[i].username	, 32, 	fp);
-				fgets(g_AddressBook.Hosts[i].password	, 32, 	fp);
-				fgets(temp								, 1, 	fp);
+				fgets(g_AddressBook.Hosts[i].hostname	, 128,	fp);
+				fgets(g_AddressBook.Hosts[i].port		, 8,	fp);
+				fgets(g_AddressBook.Hosts[i].username	, 32,	fp);
+				fgets(g_AddressBook.Hosts[i].password	, 32,	fp);
+				fgets(temp								, 1,	fp);
 				g_AddressBook.Hosts[i].conn_type = temp[0]-'0';
 				RemoveLFCF(g_AddressBook.Hosts[i].hostname);
 				RemoveLFCF(g_AddressBook.Hosts[i].port);
@@ -4234,9 +4234,9 @@ void LoadConfig(Connection *cn)
 			if(!OpenIFF(iff, IFFF_READ)) {
 				if(!(PropChunk(iff, ID_MFTP, ID_GLOB) || 
 					 CollectionChunk(iff, ID_MFTP, ID_HOST) ||
-				     StopOnExit(iff, ID_MFTP, ID_FORM))) {
+					 StopOnExit(iff, ID_MFTP, ID_FORM))) {
 					itemp = ParseIFF(iff, IFFPARSE_SCAN);
-    	        	if(itemp == IFFERR_EOC) {
+					if(itemp == IFFERR_EOC) {
 						sp = FindProp(iff, ID_MFTP, ID_GLOB);
 						if (sp) {
 							#ifdef DEBUGLV2
@@ -4399,9 +4399,9 @@ void LoadConfig2(Connection *cn)
 			if(!OpenIFF(iff, IFFF_READ)) {
 				if(!(PropChunk(iff, ID_MFTP, ID_GLOB) || 
 					 CollectionChunk(iff, ID_MFTP, ID_HOST) ||
-				     StopOnExit(iff, ID_MFTP, ID_FORM))) {
+					 StopOnExit(iff, ID_MFTP, ID_FORM))) {
 					itemp = ParseIFF(iff, IFFPARSE_SCAN);
-    	        	if(itemp == IFFERR_EOC) {
+					if(itemp == IFFERR_EOC) {
 						sp = FindProp(iff, ID_MFTP, ID_GLOB);
 						if (sp) {
 							#ifdef DEBUGLV2
@@ -4415,7 +4415,7 @@ void LoadConfig2(Connection *cn)
 							config_version = MemReadDword(&ptr);
 							
 							// Read number of records
-							nrecs =  MemReadDword(&ptr);
+							nrecs =	 MemReadDword(&ptr);
 							
 							// Read the settings
 							for (i = 0; i < nrecs; i++) {
@@ -4572,7 +4572,7 @@ bool SaveConfig()
 					}
 					
 					if (g_AddressBook.used_hosts) {
-             			ret = true;
+						ret = true;
 						for (i = g_AddressBook.used_hosts-1; i >= 0; i--) {
 							if(!PushChunk(iff, ID_MFTP, ID_HOST, IFFSIZE_UNKNOWN)) {
 								itemp = caf_strlen(g_AddressBook.Hosts[i].entryname);
@@ -4628,8 +4628,8 @@ bool SaveConfig()
 							} else {
 								printf("ERROR: PushChunk() failed!, cannot save configuration file");						
 								ret = false;
-                            }
-                            
+							}
+							
 							PopChunk(iff);
 						}
 					}
@@ -4695,12 +4695,12 @@ int MemReadString(char *dest, char **ptr, int len, int maxlen)
 /* Mui or gui Stuff */
 void MUI_SetConnectButton(Connection *cn)
 {
-	set(cn->BTN_CONNDISC, MUIA_Text_Contents, "\33c  Connect  ");
+	set(cn->BTN_CONNDISC, MUIA_Text_Contents, "\33c	 Connect  ");
 }
 
 void MUI_SetDisconnectButton(Connection *cn)
 {
-	set(cn->BTN_CONNDISC, MUIA_Text_Contents, "\33c  Disconnect  ");
+	set(cn->BTN_CONNDISC, MUIA_Text_Contents, "\33c	 Disconnect	 ");
 }
 
 void MUI_AddStatusWindow(Connection *cn, char *text)
@@ -4760,9 +4760,9 @@ void MUI_UpdateQueueListbox(Connection *cn, bool b_full_update)
 		MUI_ClearListbox(cn->QueueLV);
 		
 		for (i = cn->queue_cur; i < cn->queue_used; i++) {
-			qc.command 	= cn->QueuedItems[i].command;
+			qc.command	= cn->QueuedItems[i].command;
 			qc.name		= cn->QueuedItems[i].data;
-			qc.status 	= STATUS_QUEUED;
+			qc.status	= STATUS_QUEUED;
 			qcptr = BufferAddStruct(&cn->queue_buffer, &qc, sizeof(QueueColumn));
 			if (qcptr)
 				DoMethod(cn->QueueLV, MUIM_NList_InsertSingle, (IPTR *) qcptr, MUIV_NList_Insert_Bottom);
@@ -5177,12 +5177,12 @@ void OnSiteWindowNew()
 	}
 	g_AddressBook.b_new_entry = true;
 	
-	set(g_AddressBook.S_ENTRYNAME, 		MUIA_String_Contents, (IPTR) "");
-	set(g_AddressBook.S_HOSTNAME, 		MUIA_String_Contents, (IPTR) "");
-	set(g_AddressBook.S_PORT, 			MUIA_String_Contents, (IPTR) "21");
-	set(g_AddressBook.S_USERNAME, 		MUIA_String_Contents, (IPTR) "");
-	set(g_AddressBook.S_PASSWORD, 		MUIA_String_Contents, (IPTR) "");
-	set(g_AddressBook.RDIO_CONN_TYPE, 	MUIA_Radio_Active, 0);
+	set(g_AddressBook.S_ENTRYNAME,		MUIA_String_Contents, (IPTR) "");
+	set(g_AddressBook.S_HOSTNAME,		MUIA_String_Contents, (IPTR) "");
+	set(g_AddressBook.S_PORT,			MUIA_String_Contents, (IPTR) "21");
+	set(g_AddressBook.S_USERNAME,		MUIA_String_Contents, (IPTR) "");
+	set(g_AddressBook.S_PASSWORD,		MUIA_String_Contents, (IPTR) "");
+	set(g_AddressBook.RDIO_CONN_TYPE,	MUIA_Radio_Active, 0);
 	set(g_AddressBook.Window, MUIA_Window_ActiveObject, g_AddressBook.S_ENTRYNAME);
 	EvalSiteWindowStatus();
 }
@@ -5216,7 +5216,7 @@ void OnSiteWindowChange()
 	get(g_AddressBook.S_PASSWORD, MUIA_String_Contents, &itmp);
 	caf_strncpy(hst->password, (char *) itmp, 32);
 	
-	get(g_AddressBook.RDIO_CONN_TYPE, 	MUIA_Radio_Active, &itmp);
+	get(g_AddressBook.RDIO_CONN_TYPE,	MUIA_Radio_Active, &itmp);
 	if (itmp == 0)
 		hst->conn_type = CTYPE_ACTV;
 	else
@@ -5259,11 +5259,11 @@ void OnSiteWindowDelete()
 
 void OnSiteWindowSave(Connection *cn)
 {
-    if (SaveConfig() == true) {
-        MUI_AddStatusWindow(cn, "STATUS: Configuration saved");
-    } else {
-        MUI_AddStatusWindow(cn, "STATUS: Error while saving configuration");
-    }
+	if (SaveConfig() == true) {
+		MUI_AddStatusWindow(cn, "STATUS: Configuration saved");
+	} else {
+		MUI_AddStatusWindow(cn, "STATUS: Error while saving configuration");
+	}
 }
 
 void OnSiteWindowExit()
@@ -5281,11 +5281,11 @@ void OnSiteWindowHostsLVDBLClick(Connection *cn)
 	get(g_AddressBook.LV_HOSTS, MUIA_List_Active, &itmp);
 	if (itmp != MUIV_NList_Active_Off) {
 		hst = &g_AddressBook.Hosts[itmp];
-		caf_strncpy(hi->hostname, 	hst->hostname, HOSTNAME_CONFIG_LEN);
+		caf_strncpy(hi->hostname,	hst->hostname, HOSTNAME_CONFIG_LEN);
 		caf_strncpy(hi->ip_s,		hst->hostname, HOSTNAME_CONFIG_LEN);
 		hi->port = caf_atol(hst->port);
-		caf_strncpy(hi->username, 	hst->username, USERNAME_CONFIG_LEN); 
-		caf_strncpy(hi->password, 	hst->password, USERNAME_CONFIG_LEN); 
+		caf_strncpy(hi->username,	hst->username, USERNAME_CONFIG_LEN); 
+		caf_strncpy(hi->password,	hst->password, USERNAME_CONFIG_LEN); 
 		hi->conn_type = hst->conn_type;
 		
 		set(g_AddressBook.Window, MUIA_Window_Open, FALSE);
