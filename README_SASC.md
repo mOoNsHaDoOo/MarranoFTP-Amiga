@@ -173,6 +173,15 @@ Con la versione precedente monolitica (prima della separazione) erano state prov
 anche, su KS 3.1 con la bsdsocket.library di UAE, la modalità attiva e la chiusura
 dal gadget di chiusura da connessi.
 
+### Formati della risposta a LIST
+
+Il core riconosce le righe Unix con e senza gruppo (`drwxr-xr-x 2 user group 4096 Nov 13 10:00 nome`,
+`-rw-r--r-- 1 user 1234 Nov 13 10:00 nome`), i link simbolici (`www -> /web/htdocs`, mostrati come
+directory) e il formato DOS/IIS dei server Windows (`11-13-26  03:00PM  <DIR>  nome`). Prima
+erano accettate solo le righe Unix con 9 campi: con un server IIS il LIST andava a buon fine
+ma la lista restava vuota (provato con un server di test che risponde in formato DOS).
+Se una riga non è riconosciuta, nello stato compare la prima in chiaro.
+
 ### Download su A500/KS 1.3 emulato
 
 Su A500/KS 1.3 emulato il trasferimento dei dati è bloccato dal collegamento

@@ -402,15 +402,87 @@ bool RefreshLocalView(Connection *cn)
 }
 
 /* Remote directory listing: parse the LIST data (UNIX "ls -l" format) */
+/* ---------------------------------------------------------------------------
+ * LIST parsing. Servers answer in different formats, all of them are
+ * handled here:
+ *   Unix  : drwxr-xr-x 2 user group 4096 Nov 13 10:00 name    (9 fields)
+ *   Unix  : -rw-r--r-- 1 user 1234 Nov 13 10:00 name          (no group)
+ *   DOS   : 11-13-26  03:00PM       <DIR>          name        (IIS)
+ *   DOS   : 11-13-2026  15:00       1234 name
+ * "total N" lines, "." and ".." are skipped; for symbolic links
+ * ("name -> target") only the name is kept and they are shown as directories
+ * (on web hostings they usually point to directories).
+ * ------------------------------------------------------------------------- */
+static bool is_blank(char c)
+{
+	return (bool) (c == ' ' || c == '\t');
+}
+
+/* Offset of field n (1 based) of line, -1 if the line has fewer fields */
+static int field_start(const char *line, int n)
+{
+	int i = 0, f = 0;
+
+	for (;;) {
+		while (is_blank(line[i]))
+			i++;
+		if (!line[i])
+			return -1;
+		if (++f == n)
+			return i;
+		while (line[i] && !is_blank(line[i]))
+			i++;
+	}
+}
+
+static bool all_digits(const char *s)
+{
+	if (!*s)
+		return false;
+	for (; *s; s++)
+		if (*s < '0' || *s > '9')
+			return false;
+	return true;
+}
+
+static bool is_month(const char *s)
+{
+	static const char *months = "JanFebMarAprMayJunJulAugSepOctNovDec";
+	int i;
+
+	if (strlen(s) != 3)
+		return false;
+	for (i = 0; i < 36; i += 3)
+		if (!strnicmp(s, &months[i], 3))
+			return true;
+	return false;
+}
+
+/* Unix permission string: "drwxr-xr-x", "-rw-r--r--", "lrwxrwxrwx", ... */
+static bool is_unix_flags(const char *s)
+{
+	return (bool) (strlen(s) >= 10 && strchr("-dlbcps", s[0]) != NULL
+				   && strchr("r-", s[1]) != NULL && strchr("w-", s[2]) != NULL);
+}
+
+/* DOS date: 11-13-26 or 11-13-2026 */
+static bool is_dos_date(const char *s)
+{
+	int n = strlen(s);
+
+	return (bool) ((n == 8 || n == 10) && s[2] == '-' && s[5] == '-'
+				   && s[0] >= '0' && s[0] <= '9' && s[3] >= '0' && s[3] <= '9');
+}
+
 void ProcessDirectoryData(Connection *cn)
 {
-	char dirflags[32], id[32], user[32], group[32], fsize[32], month[32], date[32], time_or_year[32];
+	char f[8][32], temp[512], name[512];
 	ClientInfo *ci = &cn->ci;
 	FileView *rv = &cn->rv;
-	char temp[512];
 	ViewColumn *vc;
-	int i, last, nfiles = 0;
-	char *line;
+	int i, k, pos, nfiles = 0, skipped = 0;
+	char *line, *first_unknown = NULL, *flags, *size, *arrow;
+	bool is_dir;
 
 	if (ci->b_directory_processed == true)
 		return;
@@ -425,16 +497,51 @@ void ProcessDirectoryData(Connection *cn)
 
 	for (i = 0; i < cn->num_lines; i++) {
 		line = &cn->transfer_buffer.ptr[cn->lines_start[i]];
-		dirflags[0] = id[0] = user[0] = group[0] = fsize[0] = month[0] = date[0] = time_or_year[0] = 0;
-		sscanf(line, "%31s %31s %31s %31s %31s %31s %31s %31s", dirflags, id, user, group, fsize, month, date, time_or_year);
-
-		/* The ninth field is the name ("total 123" lines have no ninth field) */
-		last = caf_istrstrnum(9, line);
-		if (last <= 0)
+		for (k = 0; k < 8; k++)
+			f[k][0] = 0;
+		sscanf(line, "%31s %31s %31s %31s %31s %31s %31s %31s", f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7]);
+		if (!f[0][0] || !stricmp(f[0], "total"))
 			continue;
 
-		snprintf(temp, sizeof(temp), "%s %s %s", month, date, time_or_year);
-		vc = view_add(rv, &line[last], dirflags[0] == 'd' ? "<DIR>" : fsize, dirflags, temp, dirflags[0] == 'd');
+		pos = -1;
+		flags = size = "";
+		is_dir = false;
+		temp[0] = 0;
+		if (is_unix_flags(f[0])) {
+			flags = f[0];
+			is_dir = (bool) (f[0][0] == 'd' || f[0][0] == 'l');
+			if (all_digits(f[4]) && is_month(f[5])) {			/* with group */
+				pos = field_start(line, 9);
+				size = f[4];
+				snprintf(temp, sizeof(temp), "%s %s %s", f[5], f[6], f[7]);
+			} else if (all_digits(f[3]) && is_month(f[4])) {	/* without group */
+				pos = field_start(line, 8);
+				size = f[3];
+				snprintf(temp, sizeof(temp), "%s %s %s", f[4], f[5], f[6]);
+			}
+		} else if (is_dos_date(f[0])) {
+			is_dir = (bool) !stricmp(f[2], "<DIR>");
+			size = f[2];
+			pos = field_start(line, 4);
+			snprintf(temp, sizeof(temp), "%s %s", f[0], f[1]);
+		}
+		if (pos < 0) {
+			if (!first_unknown)
+				first_unknown = line;
+			skipped++;
+			continue;
+		}
+
+		caf_strncpy(name, &line[pos], sizeof(name));
+		if (flags[0] == 'l' && (arrow = strstr(name, " -> ")) != NULL)
+			*arrow = 0;									/* symbolic link: name only */
+		k = strlen(name);
+		while (k > 0 && is_blank(name[k - 1]))
+			name[--k] = 0;
+		if (!name[0] || !strcmp(name, ".") || !strcmp(name, ".."))
+			continue;
+
+		vc = view_add(rv, name, is_dir ? "<DIR>" : size, flags, temp, is_dir);
 		if (!vc || !view_collect(rv, vc, &nfiles)) {
 			gui_status("ERROR: Remote listview buffer full, cannot continue directory scan");
 			break;
@@ -442,6 +549,13 @@ void ProcessDirectoryData(Connection *cn)
 	}
 	view_finish(rv, nfiles, GUI_REMOTE);
 	ci->b_directory_processed = true;
+
+	/* lines in a format we do not know: show the first one, so the problem
+	   can be seen without a debug build */
+	if (first_unknown) {
+		snprintf(temp, sizeof(temp), "STATUS: %d LIST line(s) in an unknown format, first: %.200s", skipped, first_unknown);
+		gui_status(temp);
+	}
 }
 
 void SetConnected(Connection *cn, bool b_con)
@@ -941,6 +1055,14 @@ void FormatFtpListing(Connection *cn, buffer *buffer, bool b_last_data)
 			cn->lines_start[cn->num_lines-1] = start_of_line;
 			start_of_line = 1+i;
 		}
+	}
+	
+	/* last line without a final newline (some servers): keep it as well */
+	if (start_of_line < i && cn->num_lines < (int)(sizeof(cn->lines_start)/sizeof(cn->lines_start[0]))) {
+		if (i < buffer->size)
+			dest[i] = 0;
+		cn->num_lines++;
+		cn->lines_start[cn->num_lines-1] = start_of_line;
 	}
 	
 	#ifdef DEBUG
