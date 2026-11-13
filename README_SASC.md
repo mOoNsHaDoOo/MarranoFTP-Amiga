@@ -69,36 +69,43 @@ emulazione (72 KB contro 115 KB):
 
 ## Requisiti
 
+Per compilare:
+
 - SAS/C 6.5x (verificato con 6.58 + patch Y2K)
-- NDK 3.x (include in `INCLUDE:`, verificato con NDK 3.2 R4)
-- MUI developer include (solo per MarranoFTP) (verificato con MUI 3.8) e le include di NList/NListview
-  (`INCLUDE:MUI/NList_mcc.h`, ...; verificato con MCC_NList 0.128, non fanno parte dell'SDK di MUI)
-- SDK di Roadshow (netinclude dell'NDK 3.2) o di AmiTCP 4.3, con l'assign `NETINCLUDE:`
+- NDK 3.x (verificato con NDK 3.2 R4, cartella `Include_H`)
+- SDK di Roadshow (le netinclude dell'NDK 3.2) oppure AmiTCP SDK 4.3
+- solo per **MarranoFTP**: MUI developer (verificato con MUI 3.8, `Developer/C/Include`)
+  e le include di NList/NListview (verificato con MCC_NList 0.128, `Developer/C/include`,
+  non fanno parte dell'SDK di MUI)
+- per **MarranoFTP13GD**: `GTE/GTE.lib` e `GTE/nl_gadtools.h`, già nel progetto
+- per **MarranoFTPI**: niente oltre all'NDK
 
-## Build verificata
+Per eseguire:
 
-Compilato con il vero SAS/C 6.58 (eseguito in emulazione con vamos):
+| Programma | Serve |
+|-----------|-------|
+| MarranoFTP | Kickstart 2.04+, MUI 3.8+, NList/NListview, uno stack TCP/IP con `bsdsocket.library` |
+| MarranoFTP13GD | Kickstart 1.2+, uno stack con `bsdsocket.library` (su 1.3 TheWire13) |
+| MarranoFTPI | Kickstart 1.2+, uno stack con `bsdsocket.library` (su 1.3 TheWire13) |
 
-| NETINCLUDE:          | Errori | Warning | Eseguibile |
-|----------------------|--------|---------|------------|
-| Roadshow (NDK 3.2)   | 0      | 0       | 79900 byte |
-| AmiTCP SDK 4.3       | 0      | 0       | 79616 byte |
+Tutti usano `bsdsocket.library` solo a runtime, quindi funzionano con qualunque stack
+(Roadshow, AmiTCP, Miami, Genesis, TheWire13): l'SDK scelto conta solo in compilazione.
+La configurazione (`marranoftp.moo`) è cercata in `MARRANO:`, `PROGDIR:` (solo 2.0+) e `S:`.
 
-`INCLUDE:` era l'unione, in quest'ordine, di NDK 3.2 `Include_H`, MUI 3.8 `C/Include`,
-NList 0.128 `Developer/C/include` e `SC:include`.
+## Assign per compilare
 
-Entrambi gli eseguibili usano `bsdsocket.library` a runtime, quindi funzionano con
-qualunque stack (Roadshow, AmiTCP, Miami, Genesis): l'SDK conta solo in compilazione.
+| Assign | Punta a |
+|--------|---------|
+| `INCLUDE:` | NDK `Include_H` + `SC:include` (e, per MarranoFTP, MUI `C/Include` + NList `C/include`) |
+| `LIB:` | `SC:lib` |
+| `NETINCLUDE:` | netinclude di Roadshow o di AmiTCP (è in `SCOPTIONS` come `INCLUDEDIR`) |
 
-## Test su AmigaOS 3.1
+`CafLib/include` è già in `SCOPTIONS`, non serve un assign. Esempio su un Amiga:
 
-Provato in FS-UAE (A1200, Kickstart 3.1 40.68, Workbench 3.1, MUI 3.8, NList 0.102,
-bsdsocket.library emulata da UAE) contro un server FTP locale:
-
-- avvio, configurazione assente e presente (`PROGDIR:marranoftp.moo`), address book;
-- connessione passiva e attiva, LIST, download e upload binari (MD5 identici);
-- uscita con Quit da disconnessi, Quit da connessi (`QUIT`/`221`) e gadget di
-  chiusura da connessi: sempre RC=0, nessun Guru.
+```
+Assign INCLUDE: NDK:Include_H SC:include MUI:Developer/C/Include NList:Developer/C/include
+Assign NETINCLUDE: NDK:SANA+RoadshowTCP-IP/netinclude   ; oppure AmiTCP-SDK-4.3/netinclude
+```
 
 ## Compilazione
 
@@ -107,7 +114,11 @@ smake                 ; tutti e tre
 smake MarranoFTP      ; MUI
 smake MarranoFTP13GD  ; OS 1.3, GadTools emulata
 smake MarranoFTPI     ; OS 1.3, intuition/graphics
+smake clean
 ```
+
+`ftp_core.c` è compilato due volte: `ftp_core.o` per MarranoFTP e `ftp_core13.o` con
+`DEFINE=MFTP_SMALL` per le due versioni 1.3, che hanno buffer più piccoli.
 
 Le opzioni del compilatore sono in `SCOPTIONS`:
 
@@ -135,38 +146,39 @@ Le opzioni del compilatore sono in `SCOPTIONS`:
 Tutto il codice specifico per piattaforma è in `CafLib/include/caf/caf_platform.h`,
 più i blocchi `#ifdef __SASC` in `ftp_core.c`, `gui_mui.c` e in `CafLib/*.c`.
 
-## Verifiche della versione separata (13/11/2026)
+## Verifiche (13/11/2026)
 
-Compilazione con SAS/C 6.58 reale (vamos), SDK Roadshow: 0 errori, 0 warning.
-MarranoFTP 71316 byte, MarranoFTP13 (ora MarranoFTP13GD) 114908 byte (~40 KB sono l'emulazione GadTools).
+Compilazione con il vero SAS/C 6.58 (eseguito con vamos), SDK Roadshow: 0 errori, 0 warning.
 
-| Prova | MarranoFTP (MUI) | MarranoFTP13 (GadTools) |
-|-------|------------------|-------------------------|
-| KS 3.1 A1200 + TheWire13 + slipbridge: connessione, LIST | ok | ok |
-| KS 3.1: download 20000 byte + upload, MD5 identico all'originale | ok | ok |
-| KS 3.1: Quit da connesso (`QUIT`/`221`), RC=0 | ok | ok |
-| KS 1.3 A500: avvio, configurazione da `S:`, rubrica, settings | - | ok |
-| KS 1.3 A500: connessione, login, PWD, LIST passivo, doppio click → RETR | - | ok |
-| KS 1.3 A500: download completo | - | **lentissimo, vedi sotto** |
+| Programma | Dimensione |
+|-----------|------------|
+| MarranoFTP | 71332 byte |
+| MarranoFTP13GD | 115228 byte (circa 40 KB sono l'emulazione GadTools) |
+| MarranoFTPI | 72340 byte |
+
+Prove in FS-UAE contro un server FTP locale, con TheWire13 + slipbridge.device:
+
+| Prova | MarranoFTP | 13GD | I |
+|-------|-----------|------|---|
+| KS 3.1 A1200: connessione, LIST, download + upload di 20000 byte con MD5 identico all'originale, Quit (`QUIT`/`221`) con RC=0 | ok | ok | ok |
+| KS 3.1: titolo "MarranoFTP Plus 1.0 (13.11.2026)" | ok | - | - |
+| KS 1.3 A500: avvio, configurazione da `S:`, rubrica, connessione, LIST, doppio click | - | ok (*) | ok |
+| KS 1.3 A500: menu, finestra settings, pulsanti a scelta, Quit | - | ok (*) | ok |
+| KS 1.3 A500: download completo | - | vedi sotto | vedi sotto |
+
+(*) provato su 1.3 prima che le righe delle liste passassero in `gui_lines.c`;
+la build attuale di MarranoFTP13GD è stata riprovata su KS 3.1.
+
+Con la versione precedente monolitica (prima della separazione) erano state provate
+anche, su KS 3.1 con la bsdsocket.library di UAE, la modalità attiva e la chiusura
+dal gadget di chiusura da connessi.
+
+### Download su A500/KS 1.3 emulato
 
 Su A500/KS 1.3 emulato il trasferimento dei dati è bloccato dal collegamento
 seriale, non dal programma: `slipstat` mostra frame SLIP da 1064 byte che arrivano
 con byte mancanti (1058 byte, senza il primo `0x45`), cioè overrun della porta seriale
 con serial.device 34 su 68000 a 7 MHz. I pacchetti piccoli (comandi, risposte, LIST)
-passano, quelli grandi quasi mai, anche rallentando l'host a 1200 byte/s. Lo stesso
-binario su KS 3.1 trasferisce senza problemi. Su un A500 vero con una scheda di rete
+passano, quelli grandi quasi mai, anche rallentando l'host a 1200 byte/s. Gli stessi
+binari su KS 3.1 trasferiscono senza problemi. Su un A500 vero con una scheda di rete
 SANA-II (o con un MTU/MSS più piccolo nello stack) il problema non dovrebbe presentarsi.
-
-## Verifiche di MarranoFTP Plus 1.0, MarranoFTP13GD e MarranoFTPI (13/11/2026)
-
-SAS/C 6.58, SDK Roadshow: 0 errori, 0 warning. MarranoFTP 71332 byte,
-MarranoFTP13GD 115228 byte, MarranoFTPI 72340 byte.
-
-| Prova | MarranoFTP | 13GD | I |
-|-------|-----------|------|---|
-| KS 3.1: connessione, download + upload 20000 byte, MD5 identico, Quit RC=0 | ok | ok | ok |
-| KS 3.1: titolo "MarranoFTP Plus 1.0 (13.11.2026)" | ok | - | - |
-| KS 1.3: avvio, rubrica, connessione, LIST, CWD con doppio click | - | ok | ok |
-| KS 1.3: menu, finestra settings, pulsanti a scelta, Quit (QUIT/221) | - | ok | ok |
-
-Il download completo su A500/KS 1.3 resta limitato dalla seriale emulata (vedi sopra).
