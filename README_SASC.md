@@ -13,6 +13,7 @@ Tre programmi dallo stesso core FTP:
 | File | Contenuto |
 |------|-----------|
 | `core.h`, `ftp_core.c` | protocollo FTP, socket, coda, configurazione. Nessun codice di interfaccia, solo chiamate compatibili OS 1.3 (niente dos/exec V36, niente iffparse, niente floating point) |
+| `ftp_list.c/h` | parser delle risposte a LIST (Unix, DOS/IIS, EPLF, Netware...), C puro |
 | `gui.h` | il contratto che ogni GUI implementa (`gui_status`, `gui_set_list`, `gui_get_selection`, ...) |
 | `gui_mui.c` | GUI MUI 3.8 + NList, usata da **MarranoFTP** (Kickstart 2.04+, AROS, MorphOS) |
 | `gui_gt.c`, `gt_bases.c` | GUI GadTools tramite `GTE.lib` (emulazione di gadtools V37 di Massimo Tantignone, pubblico dominio, in `GTE/`), usata da **MarranoFTP13GD** |
@@ -175,12 +176,28 @@ dal gadget di chiusura da connessi.
 
 ### Formati della risposta a LIST
 
-Il core riconosce le righe Unix con e senza gruppo (`drwxr-xr-x 2 user group 4096 Nov 13 10:00 nome`,
-`-rw-r--r-- 1 user 1234 Nov 13 10:00 nome`), i link simbolici (`www -> /web/htdocs`, mostrati come
-directory) e il formato DOS/IIS dei server Windows (`11-13-26  03:00PM  <DIR>  nome`). Prima
-erano accettate solo le righe Unix con 9 campi: con un server IIS il LIST andava a buon fine
-ma la lista restava vuota (provato con un server di test che risponde in formato DOS).
-Se una riga non è riconosciuta, nello stato compare la prima in chiaro.
+Il parser è in `ftp_list.c` (C puro, senza dipendenze Amiga, collaudabile su qualunque
+macchina) e segue l'approccio di FileZilla: nelle righe Unix cerca la data, la dimensione
+è il numero che la precede e il nome è quello che la segue, quindi non importa quanti campi
+utente/gruppo ci sono o se manca il contatore dei link. Riconosce:
+
+| Formato | Esempio |
+|---------|---------|
+| Unix (con o senza gruppo, ACL `+`) | `drwxr-xr-x 2 user group 4096 Nov 13 10:00 nome` |
+| Unix, mesi in italiano/tedesco/francese/spagnolo (ISO-8859-1 e UTF-8) | `-rw-r--r-- 1 user group 500 ott 13 10:00 nome` |
+| Unix, giorno prima del mese | `-rw-r--r-- 1 user group 500 13 nov 2025 nome` |
+| Unix, data ISO | `-rw-r--r-- 1 user group 500 2026-11-13 10:00 nome` |
+| link simbolici (mostrati come directory) | `lrwxrwxrwx 1 root root 12 Nov 13 10:00 www -> /web/htdocs` |
+| Netware | `d [RWCEAFMS] admin 512 Nov 13 10:00 nome` |
+| DOS/IIS | `11-13-26  03:00PM  <DIR>  nome`, `2026-11-13  15:00  1234 nome` |
+| EPLF | `+i8388621.48594,m825718503,r,s280,<TAB>nome` |
+
+Vengono tolti i segni di `ls -F` in fondo ai nomi (`/`, `*`, `|`) e ignorate le righe
+`total`, `.` e `..`. Se una riga non è riconosciuta, nello stato compare la prima in chiaro.
+Non c'è (ancora) MLSD: richiede di inviare il comando `MLSD` quando il server lo annuncia in `FEAT`.
+
+Provato con server di test che rispondono in formato DOS e con tutti i formati mescolati:
+la lista è completa, i nomi passati a `RETR`/`CWD` sono esatti, MD5 identico.
 
 ### Download su A500/KS 1.3 emulato
 

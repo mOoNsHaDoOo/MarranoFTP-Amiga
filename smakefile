@@ -32,20 +32,23 @@ CAFOBJS = CafLib/debugging.o CafLib/networking_helpers.o CafLib/thread_helpers.o
 
 all: MarranoFTP MarranoFTP13GD MarranoFTPI
 
-MarranoFTP: ftp_core.o gui_mui.o $(CAFOBJS)
-	sc LINK TO MarranoFTP ftp_core.o gui_mui.o $(CAFOBJS)
+MarranoFTP: ftp_core.o ftp_list.o gui_mui.o $(CAFOBJS)
+	sc LINK TO MarranoFTP ftp_core.o ftp_list.o gui_mui.o $(CAFOBJS)
 
-MarranoFTP13GD: ftp_core13.o gui_gt.o gui_lines.o gt_bases.o $(CAFOBJS)
-	sc LINK TO MarranoFTP13GD ftp_core13.o gui_gt.o gui_lines.o gt_bases.o $(CAFOBJS) LIB GTE/GTE.lib
+MarranoFTP13GD: ftp_core13.o ftp_list.o gui_gt.o gui_lines.o gt_bases.o $(CAFOBJS)
+	sc LINK TO MarranoFTP13GD ftp_core13.o ftp_list.o gui_gt.o gui_lines.o gt_bases.o $(CAFOBJS) LIB GTE/GTE.lib
 
-MarranoFTPI: ftp_core13.o gui_int.o gui_lines.o $(CAFOBJS)
-	sc LINK TO MarranoFTPI ftp_core13.o gui_int.o gui_lines.o $(CAFOBJS)
+MarranoFTPI: ftp_core13.o ftp_list.o gui_int.o gui_lines.o $(CAFOBJS)
+	sc LINK TO MarranoFTPI ftp_core13.o ftp_list.o gui_int.o gui_lines.o $(CAFOBJS)
 
-ftp_core.o: ftp_core.c core.h gui.h
+ftp_core.o: ftp_core.c core.h gui.h ftp_list.h
 	sc ftp_core.c OBJNAME=ftp_core.o
 
-ftp_core13.o: ftp_core.c core.h gui.h
+ftp_core13.o: ftp_core.c core.h gui.h ftp_list.h
 	sc ftp_core.c OBJNAME=ftp_core13.o DEFINE=MFTP_SMALL
+
+ftp_list.o: ftp_list.c ftp_list.h
+	sc ftp_list.c OBJNAME=ftp_list.o
 
 gui_mui.o: gui_mui.c core.h gui.h
 	sc gui_mui.c OBJNAME=gui_mui.o
@@ -78,4 +81,4 @@ CafLib/stdio_helpers.o: CafLib/stdio_helpers.c
 	sc CafLib/stdio_helpers.c OBJNAME=CafLib/stdio_helpers.o
 
 clean:
-	-delete ftp_core.o ftp_core13.o gui_mui.o gui_gt.o gui_int.o gui_lines.o gt_bases.o $(CAFOBJS) MarranoFTP MarranoFTP13GD MarranoFTPI QUIET
+	-delete ftp_core.o ftp_core13.o ftp_list.o gui_mui.o gui_gt.o gui_int.o gui_lines.o gt_bases.o $(CAFOBJS) MarranoFTP MarranoFTP13GD MarranoFTPI QUIET
