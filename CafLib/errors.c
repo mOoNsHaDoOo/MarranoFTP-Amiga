@@ -221,12 +221,101 @@ static struct ErrnoEntry ErrnoTable[MAX_ERRNO] =
 };
 #endif
 
+#ifdef __SASC
+/*
+ * AmigaOS 3.x: the codes come from bsdsocket.library (getsockopt(SO_ERROR),
+ * errno set through SetErrnoPtr()), which always uses the BSD numbering.
+ * Numeric values are used on purpose: SAS/C <errno.h> and the AmiTCP/Roadshow
+ * <sys/errno.h> do not agree on every symbol.
+ */
+#define MAX_ERRNO 72
+static struct ErrnoEntry ErrnoTable[MAX_ERRNO] =
+{
+	{ 0,  "No error" },
+	{ 1,  "Operation not permitted" },
+	{ 2,  "No such file or directory" },
+	{ 3,  "No such process" },
+	{ 4,  "Interrupted system call" },
+	{ 5,  "Input/output error" },
+	{ 6,  "Device not configured" },
+	{ 7,  "Argument list too long" },
+	{ 8,  "Exec format error" },
+	{ 9,  "Bad file descriptor" },
+	{ 10, "No child processes" },
+	{ 11, "Resource deadlock avoided" },
+	{ 12, "Cannot allocate memory" },
+	{ 13, "Permission denied" },
+	{ 14, "Bad address" },
+	{ 15, "Block device required" },
+	{ 16, "Device busy" },
+	{ 17, "File exists" },
+	{ 18, "Cross-device link" },
+	{ 19, "Operation not supported by device" },
+	{ 20, "Not a directory" },
+	{ 21, "Is a directory" },
+	{ 22, "Invalid argument" },
+	{ 23, "Too many open files in system" },
+	{ 24, "Too many open files" },
+	{ 25, "Inappropriate ioctl for device" },
+	{ 26, "Text file busy" },
+	{ 27, "File too large" },
+	{ 28, "No space left on device" },
+	{ 29, "Illegal seek" },
+	{ 30, "Read-only file system" },
+	{ 31, "Too many links" },
+	{ 32, "Broken pipe" },
+	{ 33, "Numerical argument out of domain" },
+	{ 34, "Result too large" },
+	{ 35, "Operation would block" },
+	{ 36, "Operation now in progress" },
+	{ 37, "Operation already in progress" },
+	{ 38, "Socket operation on non-socket" },
+	{ 39, "Destination address required" },
+	{ 40, "Message too long" },
+	{ 41, "Protocol wrong type for socket" },
+	{ 42, "Protocol not available" },
+	{ 43, "Protocol not supported" },
+	{ 44, "Socket type not supported" },
+	{ 45, "Operation not supported on socket" },
+	{ 46, "Protocol family not supported" },
+	{ 47, "Address family not supported by protocol family" },
+	{ 48, "Address already in use" },
+	{ 49, "Can't assign requested address" },
+	{ 50, "Network is down" },
+	{ 51, "Network is unreachable" },
+	{ 52, "Network dropped connection on reset" },
+	{ 53, "Software caused connection abort" },
+	{ 54, "Connection reset by peer" },
+	{ 55, "No buffer space available" },
+	{ 56, "Socket is already connected" },
+	{ 57, "Socket is not connected" },
+	{ 58, "Can't send after socket shutdown" },
+	{ 59, "Too many references: can't splice" },
+	{ 60, "Connection timed out" },
+	{ 61, "Connection refused" },
+	{ 62, "Too many levels of symbolic links" },
+	{ 63, "File name too long" },
+	{ 64, "Host is down" },
+	{ 65, "No route to host" },
+	{ 66, "Directory not empty" },
+	{ 67, "Too many processes" },
+	{ 68, "Too many users" },
+	{ 69, "Disc quota exceeded" },
+	{ 70, "Stale NFS file handle" },
+	{ 71, "Too many levels of remote in path" }
+};
+#endif
+
+#ifndef MAX_ERRNO
+#error errors.c: no errno table for this platform
+#endif
+
 char *GetErrnoDesc(int err_code)
 {
 	int i;
 	
 	for (i = 0; i < MAX_ERRNO; i++) {
-		if (ErrnoTable[i].error_code == err_code)
+		if (ErrnoTable[i].error_code == err_code && ErrnoTable[i].error_desc)
 			return ErrnoTable[i].error_desc;
 	}
 	

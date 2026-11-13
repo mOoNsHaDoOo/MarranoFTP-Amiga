@@ -37,9 +37,10 @@ bool SetBlocking(SOCKET socket, bool b_block);
 int ReadSocket(void *in_dest, SOCKET socket, int maxlen);
 int CanWriteSocket(SOCKET socket, int wait_sec, int wait_usec);
 int CanReadSocket(SOCKET socket, int wait_sec, int wait_usec);
+bool WriteSocket(SOCKET socket, void *in_buffer, int len);
 bool WriteSocketNB(SOCKET socket, void *in_buffer, int len, int wait_sec, int wait_usec);
 bool ReadSocketNB(void *in_dest, SOCKET socket, int maxlen, int wait_sec, int wait_usec);
-int GetLastNetErr();
+int GetLastNetErr(void);
 
 #endif
 

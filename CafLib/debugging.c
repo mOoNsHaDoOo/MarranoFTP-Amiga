@@ -15,10 +15,14 @@
 #include <ppcinline/dos.h>
 extern struct DOSBase *DOSBase;
 #endif
+#ifdef __SASC
+#include <proto/exec.h>
+#include <proto/dos.h>
+#endif
 
 #include <caf/caf_types.h>
 #include <caf/caf_debugging.h>
-#include <caf/thread_helpers.h> // CAF debugging has to be thread safe
+#include <caf/thread_helpers.h> /* CAF debugging has to be thread safe */
 
 char caf_debug_fname[1024];
 int  caf_debug_mode;
@@ -27,7 +31,7 @@ bool caf_debug_inited;
 
 void CafDebugInit(int in_mode)
 {
-	BPTR caf_file;
+	BPTR caf_file = 0;
 	int mode = in_mode;
 	
 	caf_debug_file_handle = (BPTR) 0;
@@ -95,9 +99,14 @@ void DebugOutputNL(char *string, bool b_addnl)
 	}
 	
 	if (caf_debug_mode & CAF_DEBUG_STDOUT) {
-		write(0, string, slen);
-		if (b_addnl)
-			write(0, "\n", 1);
+		// Was write(0, ...), fd 0 is stdin. Use the dos.library output
+		// handle, it works with every compiler/runtime
+		BPTR out = Output();
+		if (out) {
+			Write(out, string, slen);
+			if (b_addnl)
+				Write(out, "\n", 1);
+		}
 	}
 }
 

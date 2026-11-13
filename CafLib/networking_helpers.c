@@ -5,6 +5,14 @@
  *
 */
 
+#ifdef __SASC
+/* AmiTCP SDK 4.3 + NDK 3.2: AmiTCP <sys/time.h> includes <proto/timer.h>, which
+   declares "struct Device *TimerBase", then AmiTCP <clib/netlib_protos.h>
+   declares "struct Library *TimerBase" (SAS/C Error 72). Skip proto/timer.h,
+   main.c includes <clib/timer_protos.h> and <pragmas/timer_pragmas.h> itself */
+#define PROTO_TIMER_H 1
+#endif
+
 /* Amiga Includes */
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -24,24 +32,35 @@
 extern struct Library *SocketBase;
 #endif
 
+#ifdef __SASC
+// AmigaOS 3.x, AmiTCP/Roadshow/Miami SDK (netinclude:)
+#include <exec/types.h>
+#include <proto/exec.h>
+#include <proto/dos.h>
+#include <proto/socket.h>
+#define select(a,b,c,d,e) WaitSelect(a,b,c,d,e,0)
+extern struct Library *SocketBase;
+#endif
+
 #include <caf/caf_types.h>
 #include <caf/networking_helpers.h>
 #include <caf/caf_debugging.h>
-
-#define memset caf_memset_local
+#include <caf/thread_helpers.h>
+#include <caf/caf_platform.h>
 
 int g_caf_last_sockerr;
 
 static void SetLastSockerr(int socket)
 {
-	int ret, optlen;
+	LONG ret = 0, optlen;
 	
 	optlen = sizeof(ret);
-	getsockopt (socket, SOL_SOCKET, SO_ERROR, &ret, &optlen);
+	if (getsockopt (socket, SOL_SOCKET, SO_ERROR, (void *) &ret, (void *) &optlen) != 0)
+		ret = -1;
 	g_caf_last_sockerr = ret;
 }
 
-int GetLastNetErr()
+int GetLastNetErr(void)
 {
 	return g_caf_last_sockerr;
 }

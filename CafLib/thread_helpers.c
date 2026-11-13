@@ -29,24 +29,35 @@ int caf_strlen(char *buf)
 	return i;
 }
 
+// maxlen is the TOTAL size of in_dest (like caf_strncpy()), not the number of
+// chars to append: every caller passes the size of the destination buffer.
+// The old code appended up to maxlen-1 chars after the existing string and
+// overflowed the destination (eg. "COMMAND: " + 510 chars in a 512 bytes buffer)
 void caf_strncat(char *in_dest, char *in_src, int maxlen)
 {
-	int len = caf_strlen(in_dest), i;
+	int len = caf_strlen(in_dest);
 	char *dest, *src = in_src;
 	
-	// 
+	if (len >= maxlen-1)
+		return;
+	
 	dest = &in_dest[len];
-	for (i = 0; (i < maxlen-1) && (*src != 0); i++)
+	while ((len < maxlen-1) && (*src != 0)) {
 		*dest++ = *src++;
+		len++;
+	}
 	
 	// Add terminator
-	*dest++ = 0;
+	*dest = 0;
 }
 
 int caf_strncpy(char *in_dest, char *in_src, int maxlen)
 {
 	char *dest = in_dest, *src = in_src;
 	int i, cnt = 0;
+	
+	if (maxlen <= 0)
+		return 0;
 	
 	for (i = 0; (i < maxlen-1) && (*src != 0); i++) {
 		*dest++ = *src++;
@@ -85,10 +96,11 @@ int caf_strscanfor(char *string, char *scanforwhat)
 	slen -= slen2;
 	
 	// Se la stringa passata è + lunga della stringa input esce con false
-	if (slen < 1)
+	// (slen == 0 means same length, it must be checked as well)
+	if (slen < 0 || slen2 == 0)
 		return -1;
 	
-	for (i = 0; i < slen; i++) {
+	for (i = 0; i <= slen; i++) {
 		eb = 0;
 		for (k = 0; k < slen2; k++) {
 			if (string[i+k] == scanforwhat[k])
@@ -116,7 +128,7 @@ int caf_atol(char *str)
 		iter_start = 1;
 	
 	// Copia i digit nella stringa digit
-	for (i = iter_start; (str[i] != 0)&&(i<CAF_ATOL_TEMPLEN); i++) {
+	for (i = iter_start; (i<CAF_ATOL_TEMPLEN)&&(str[i] != 0); i++) {
 		if (str[i] < '0' || str[i] > '9')
 			break;
 		
@@ -136,19 +148,31 @@ int caf_atol(char *str)
 	return numba;
 }
 
+// The old version wrote the digits in reverse order (123 -> "321"), did not
+// handle negative numbers and could write maxlen+1 bytes
 void caf_IToA(char *dest, int number, int maxlen)
 {
-	int i = 0, numba = number;
-	char *dst = dest;
+	char tmp[16];
+	unsigned int numba;
+	int i = 0, n = 0;
 	
+	if (maxlen <= 0)
+		return;
+	
+	numba = (number < 0) ? (unsigned int)(-(number+1))+1 : (unsigned int) number;
 	do {
-		*dst++ = (numba % 10)+'0';
+		tmp[n++] = (char)((numba % 10)+'0');
 		numba /= 10;
-		i++;
-	} while ((numba != 0) && (i < maxlen));
+	} while (numba != 0);
+	
+	if (number < 0)
+		tmp[n++] = '-';
+	
+	while (n > 0 && i < maxlen-1)
+		dest[i++] = tmp[--n];
 	
 	// Add terminator
-	*dst++ = 0;
+	dest[i] = 0;
 }
 
 void caf_IToACat(char *dest, int number, int maxlen)
@@ -168,11 +192,12 @@ int caf_istrstrl(char *substr, char *str )
 	int len_str, len_substr, i, j, curfind = -1;
 	
 	len_substr	= caf_strlen(substr);
+	len_str		= caf_strlen(str);			// was used uninitialized
 	if (len_substr == 0)
 		// No substring or string, blah
 		return -1;
 	
-	for (i = 0; i < str[i] != 0; i++) {
+	for (i = 0; str[i] != 0; i++) {			// was "i < str[i] != 0"
 		for (j = 0; j < len_substr && i+j < len_str; j++)
 			if (str[i+j] != substr[j])
 				break;
@@ -192,6 +217,7 @@ int caf_istrstrf(char *substr, char *str)
 	int len_str, len_substr, i, j;
 	
 	len_substr	= caf_strlen(substr);
+	len_str		= caf_strlen(str);			// was used uninitialized
 	if (len_substr == 0)
 		// No substring or string, blah
 		return -1;
@@ -281,7 +307,8 @@ int caf_substrset(char *str, int *strarray, int strmax)
 		if (str[i] != ' ' && was_space == true) {
 			// If current char is not a space and previous was, a new string has been found
 			strarray[curstr] = i;
-			str[i-1] = 0;
+			if (i > 0)						// was writing str[-1] when str[0] != ' '
+				str[i-1] = 0;
 			curstr++;
 			if (curstr >= strmax)
 				break;
@@ -294,6 +321,7 @@ int caf_substrset(char *str, int *strarray, int strmax)
 }
 
 // Adds N characters to the string up to len chars
+// NOTE: str must be at least up_to+1 bytes long, the terminator goes in str[up_to]
 void caf_strcatpad(char *str, int up_to, char padchar)
 {
 	bool pad_it = false;

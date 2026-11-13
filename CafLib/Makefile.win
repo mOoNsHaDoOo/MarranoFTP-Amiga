@@ -6,8 +6,8 @@
 CPP       = i686-aros-g++.exe
 CC        = i686-aros-gcc.exe
 WINDRES   = windres.exe
-OBJ       = debugging.o networking_helpers.o thread_helpers.o errors.o
-LINKOBJ   = debugging.o networking_helpers.o thread_helpers.o errors.o
+OBJ       = debugging.o networking_helpers.o thread_helpers.o errors.o stdio_helpers.o
+LINKOBJ   = debugging.o networking_helpers.o thread_helpers.o errors.o stdio_helpers.o
 LIBS      = -L"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/lib"  
 INCS      = -I"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/sys-include" -I"C:/Code/Amiga/AROS/CafLib/include"
 CXXINCS   = -I"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/lib/gcc-lib/i686-aros/3.3.1" -I"C:/Code/Amiga/AmiDevCpp/usr/local/amiga/i686-aros/sys-include" -I"C:/Code/Amiga/AROS/CafLib/include"
@@ -40,3 +40,6 @@ thread_helpers.o: $(GLOBALDEPS) thread_helpers.c
 
 errors.o: $(GLOBALDEPS) errors.c
 	$(CC) -c errors.c -o errors.o $(CFLAGS)
+
+stdio_helpers.o: $(GLOBALDEPS) stdio_helpers.c
+	$(CC) -c stdio_helpers.c -o stdio_helpers.o $(CFLAGS)

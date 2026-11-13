@@ -1,0 +1,77 @@
+
+
+--------------------------------------------------------------------------
+  Behavior differences between the functions of GTE.lib & gadtools 34.1
+  and those of the true gadtools 37 (remove the EF_ prefix if you refer
+  to gadtools.library 34.1, leave it if you refer instead to GTE.lib).
+--------------------------------------------------------------------------
+
+
+EF_CreateGadgetA(CYCLE_KIND,...):
+ · The inner text (that of the labels) of these gadgets doesn't change
+   its color when the gadget is in HIGHLIGHTED state but instead it stays
+   of the TEXTPEN color.
+   This goes unnoticed if the TEXTPEN and FILLTEXTPEN colors are the same.
+
+EF_CreateGadgetA(MX_KIND,...):
+ · This gadget kind, unlike gadtools, doesn't (yet) support the underscore
+   for each label.
+ · The (obsolete) tag LAYOUTA_Spacing isn't supported. Use, as the RKM
+   also recommends, the new tag GTMX_Spacing.
+
+EF_CreateGadgetA(STRING_KIND,...):
+EF_CreateGadgetA(INTEGER_KIND,...):
+ · The tags GA_TabCycle and STRINGA_ExitHelp aren't supported, and probably
+   they will never be, as these are features of intuition V37 and not of
+   gadtools.
+
+EF_CreateGadgetA(TEXT_KIND,...):
+EF_CreateGadgetA(NUMBER_KIND,...):
+ · The gadget of this kind always cut the text if this is larger than the
+   gadget, while gadtools doesn't do that if the gadget hasn't a border.
+
+EF_LayoutMenuItemsA(...):
+ · The placing of the menu item and sub-item isn't always identical to
+   what gadtools would do, but it's not easy to discover the exact criteria
+   gadtools uses just by making experimental observations.
+ · The displacement and columnizing of the menu item, to do in the case of
+   insufficient space (screen too narrow or too shorter) aren't (yet)
+   supported.
+
+
+--------------------------------------------------------------------------
+                              FIXED PROBLEMS
+--------------------------------------------------------------------------
+
+EF_CreateGadgetA(ALL_KINDS,...):
+ · The tag GT_Underscore is supported but it produces an underscore
+   character placed lower than that produced by gadtools.
+   That is because GTE.lib superimposes a true underscore character to
+   the text, while gadtools probably adds an image or a border under the
+   character to be underlined. (?!?, N. o. A.)
+   It's not, however, a relevant problem and it goes almost unnoticed if
+   the used font is topaz 8.
+ > Solution: Now it superimposes to the text a character that is the same
+   as that to be underlined, with in addition the FSF_UNDERLINED style
+   (exactly what gadtools does).
+
+EF_CreateGadgetA(PALETTE_KIND,...):
+ · If the tag GTPA_ColorOffset has a value different than zero, the color
+   gadgets shifted to the end of the list will return, if selected, the
+   value corresponding to their actual color, and not, like with gadtools,
+   the ordinal numeric value corresponding to their position in the list
+   (all this in the Code field).
+ > Solution: Banal. Now it behaves as gadtools, also because the behavior
+   of gadtools in this case isn't casual at all, but instead it follows a
+   well-defined logic and furthermore it is described by the official
+   documentation (AMIGA ROM Kernel Reference Manual: Libraries).
+
+EF_CreateGadgetA(CYCLE_KIND,...):
+ · With very large fonts (compared to the gadget's size) the text could
+   not be vertically centered with the same precision as gadtools [but
+   it isn't certain at all that really happens].
+ > Solution: Indeed it doesn't happen.
+
+--------------------------------------------------------------------------
+
+

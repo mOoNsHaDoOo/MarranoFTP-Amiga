@@ -1,0 +1,81 @@
+# MarranoFTP - SAS/C 6.x smakefile
+#
+# Three programs from the same FTP core (ftp_core.c, no user interface code):
+#
+#   MarranoFTP      ftp_core.c + gui_mui.c  MUI 3.8 + NList, Kickstart 2.04+
+#   MarranoFTP13GD  ftp_core.c + gui_gt.c   GadTools emulation (GTE.lib),
+#                                           Kickstart 1.2/1.3+
+#   MarranoFTPI     ftp_core.c + gui_int.c  only intuition + graphics,
+#                                           Kickstart 1.2/1.3+
+#
+# The two OS 1.3 programs use smaller buffers (DEFINE=MFTP_SMALL) and share
+# gui_lines.c (text of the lists).
+#
+# Requirements:
+#   - NDK 3.x includes (INCLUDE:)
+#   - MUI developer includes + NList/NListview mcc includes (MarranoFTP only)
+#   - AmiTCP / Roadshow / Miami SDK includes assigned to NETINCLUDE:
+#   - GTE/GTE.lib and GTE/nl_gadtools.h (included, public domain,
+#     by Massimo Tantignone) for MarranoFTP13GD
+#
+# Compiler options are in SCOPTIONS (DATA=FAR is mandatory: the Connection
+# structure is far too big for the near data section).
+# For a debug build add DEFINE=DEBUG to the sc lines.
+#
+# Usage: smake                  (all the programs)
+#        smake MarranoFTP       (MUI)
+#        smake MarranoFTP13GD   (OS 1.3, GadTools emulation)
+#        smake MarranoFTPI      (OS 1.3, intuition/graphics)
+#        smake clean
+
+CAFOBJS = CafLib/debugging.o CafLib/networking_helpers.o CafLib/thread_helpers.o CafLib/errors.o CafLib/stdio_helpers.o
+
+all: MarranoFTP MarranoFTP13GD MarranoFTPI
+
+MarranoFTP: ftp_core.o gui_mui.o $(CAFOBJS)
+	sc LINK TO MarranoFTP ftp_core.o gui_mui.o $(CAFOBJS)
+
+MarranoFTP13GD: ftp_core13.o gui_gt.o gui_lines.o gt_bases.o $(CAFOBJS)
+	sc LINK TO MarranoFTP13GD ftp_core13.o gui_gt.o gui_lines.o gt_bases.o $(CAFOBJS) LIB GTE/GTE.lib
+
+MarranoFTPI: ftp_core13.o gui_int.o gui_lines.o $(CAFOBJS)
+	sc LINK TO MarranoFTPI ftp_core13.o gui_int.o gui_lines.o $(CAFOBJS)
+
+ftp_core.o: ftp_core.c core.h gui.h
+	sc ftp_core.c OBJNAME=ftp_core.o
+
+ftp_core13.o: ftp_core.c core.h gui.h
+	sc ftp_core.c OBJNAME=ftp_core13.o DEFINE=MFTP_SMALL
+
+gui_mui.o: gui_mui.c core.h gui.h
+	sc gui_mui.c OBJNAME=gui_mui.o
+
+gui_gt.o: gui_gt.c core.h gui.h gui_lines.h
+	sc gui_gt.c OBJNAME=gui_gt.o DEFINE=MFTP_SMALL
+
+gui_int.o: gui_int.c core.h gui.h gui_lines.h
+	sc gui_int.c OBJNAME=gui_int.o DEFINE=MFTP_SMALL
+
+gui_lines.o: gui_lines.c core.h gui_lines.h
+	sc gui_lines.c OBJNAME=gui_lines.o DEFINE=MFTP_SMALL
+
+gt_bases.o: gt_bases.c
+	sc gt_bases.c OBJNAME=gt_bases.o
+
+CafLib/debugging.o: CafLib/debugging.c
+	sc CafLib/debugging.c OBJNAME=CafLib/debugging.o
+
+CafLib/networking_helpers.o: CafLib/networking_helpers.c
+	sc CafLib/networking_helpers.c OBJNAME=CafLib/networking_helpers.o
+
+CafLib/thread_helpers.o: CafLib/thread_helpers.c
+	sc CafLib/thread_helpers.c OBJNAME=CafLib/thread_helpers.o
+
+CafLib/errors.o: CafLib/errors.c
+	sc CafLib/errors.c OBJNAME=CafLib/errors.o
+
+CafLib/stdio_helpers.o: CafLib/stdio_helpers.c
+	sc CafLib/stdio_helpers.c OBJNAME=CafLib/stdio_helpers.o
+
+clean:
+	-delete ftp_core.o ftp_core13.o gui_mui.o gui_gt.o gui_int.o gui_lines.o gt_bases.o $(CAFOBJS) MarranoFTP MarranoFTP13GD MarranoFTPI QUIET
