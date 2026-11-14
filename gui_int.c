@@ -93,7 +93,7 @@ enum {
 enum { MN_SITES, MN_SETTINGS, MN_SAVECFG, MN_ABOUT, MN_QUIT, MN_COUNT };
 
 /* labels of the toggle buttons: same length, they are drawn with JAM2 */
-static char *ConnTypes[] = { "Active ", "Passive" };
+static char *ConnTypes[] = { "Active ", "Passive", "SFTP   " };
 static char *QueueTypes[] = { "Stop at error", "Process all  " };
 static char *PartialTypes[] = { "Delete", "Keep  " };
 
@@ -687,7 +687,7 @@ static void ab_show(int index)
 	str_set(&g_ab_str[2], win, h->port);
 	str_set(&g_ab_str[3], win, h->username);
 	str_set(&g_ab_str[4], win, h->password);
-	g_ab_conn_type = h->conn_type ? 1 : 0;
+	g_ab_conn_type = h->conn_type >= CTYPE_ACTV && h->conn_type <= CTYPE_SFTP ? h->conn_type : CTYPE_ACTV;
 	btn_label(&g_ab_type, win, ConnTypes[g_ab_conn_type]);
 }
 
@@ -775,7 +775,7 @@ static void ab_apply(void)
 	caf_strncpy(h.port, str_get(&g_ab_str[2]), PORT_COFING_LEN);
 	caf_strncpy(h.username, str_get(&g_ab_str[3]), USERNAME_CONFIG_LEN);
 	caf_strncpy(h.password, str_get(&g_ab_str[4]), PASSWORD_CONFIG_LEN);
-	h.conn_type = g_ab_conn_type ? CTYPE_PASV : CTYPE_ACTV;
+	h.conn_type = g_ab_conn_type;
 	if (!h.entryname[0])
 		caf_strncpy(h.entryname, h.hostname, ENTRYNAME_CONFIG_LEN);
 	if (!h.hostname[0]) {
@@ -835,7 +835,7 @@ static void ab_event(ULONG class, UWORD code, struct Gadget *gad, WORD mx, WORD 
 		return;
 	switch (gad->GadgetID) {
 		case GID_AB_TYPE:
-			g_ab_conn_type ^= 1;
+			g_ab_conn_type = (g_ab_conn_type + 1) % 3;
 			btn_label(&g_ab_type, g_ab.win, ConnTypes[g_ab_conn_type]);
 			break;
 		case GID_AB_NEW:

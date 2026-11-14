@@ -59,6 +59,9 @@
 #include "core.h"
 #include "ftp_list.h"
 #include "gui.h"
+#ifdef MFTP_SSH
+#include "core_sftp.h"
+#endif
 
 /* ---------------------------------------------------------------------------
  * Globals
@@ -86,6 +89,24 @@ static char g_temp[1024];
 static char g_config_filename[512];
 static char g_QueueLocalPath[512];		/* local directory while a queue runs */
 static bool g_quit_now;					/* the main loop must end */
+
+#ifdef MFTP_SSH
+static Sftp *g_sftp;					/* SFTP session, NULL with FTP */
+static char g_sftp_cwd[512];			/* server side current directory */
+static char g_sftp_local[512];			/* local file of the transfer */
+static unsigned char *g_sftp_buf;		/* upload read buffer */
+static bool g_sftp_list_pending;		/* list asked during a transfer */
+#define SFTP_READ_SIZE (SFTP_BLOCK * 2)
+static bool SftpConnect(Connection *cn);
+static void SftpDisconnect(Connection *cn);
+static void SftpList(Connection *cn);
+static void SftpChdir(Connection *cn, char *path);
+static void SftpDelete(Connection *cn, char *name);
+static void SftpMkdir(Connection *cn, char *path);
+static int SftpStartTransfer(Connection *cn, char *filename, bool b_download);
+static void SftpTransferStep(Connection *cn);
+static void SftpAbort(Connection *cn);
+#endif
 
 /* Temporary list used to put the directories before the files */
 static ViewColumn *g_files_tmp[MAX_VIEW_ENTRIES];
@@ -700,6 +721,10 @@ bool FtpConnect(Connection *cn)
 		#endif
 		return false;
 	}
+	#ifdef MFTP_SSH
+	if (hi->conn_type == CTYPE_SFTP)
+		return SftpConnect(cn);
+	#endif
 	
 	// Resolve site hostname
 	ent = gethostbyname(hi->hostname);
@@ -997,6 +1022,13 @@ int FtpDisconnect(Connection *cn)
 {
 	ClientInfo *ci = &cn->ci;
 	
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpDisconnect(cn);
+		return 0;
+	}
+	#endif
+	
 	// Disconnecting...
 	if (ci->b_transfering) {
 		// If we are transfering a file, let's abort it
@@ -1160,6 +1192,13 @@ int SendPWDCMD(Connection *cn)
 int SendCWDCMD(Connection *cn, char *path)
 {
 	char temp[511];
+	
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpChdir(cn, path);
+		return NO_ERRORS;
+	}
+	#endif
 	
 	snprintf(temp, 511, "CWD %s", path);
 	return SendFtpCommand(cn, temp, false);
@@ -2109,6 +2148,13 @@ int InitiateListTransfer(Connection *cn)
 {
 	HostInfo *hi = &cn->hi;
 	
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpList(cn);
+		return NO_ERRORS;
+	}
+	#endif
+	
 	if (cn->ci.b_can_send_command) {
 		if (hi->conn_type == CTYPE_ACTV) {
 			/* LIST, ACTIVE */
@@ -2141,6 +2187,11 @@ int InitiateFileTransfer(Connection *cn, char *filename, bool b_download)
 {
 	ClientInfo *ci = &cn->ci;
 	HostInfo *hi = &cn->hi;
+	
+	#ifdef MFTP_SSH
+	if (g_sftp)
+		return SftpStartTransfer(cn, filename, b_download);
+	#endif
 	
 	if (cn->ci.b_can_send_command) {
 		if (hi->conn_type == CTYPE_ACTV) {
@@ -2179,6 +2230,13 @@ int InitiateFileTransfer(Connection *cn, char *filename, bool b_download)
 int InitiateFileDeletion(Connection *cn, char *filename)
 {
 	char temp[512];
+	
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpDelete(cn, filename);
+		return NO_ERRORS;
+	}
+	#endif
 	
 	snprintf(temp, 511, "DELE %s", filename);
 	SendFtpCommand(cn, temp, false);
@@ -2249,6 +2307,13 @@ int GatherIpPortNumber(Connection *cn)
 int SendMKDCMD(Connection *cn, char *pathname)
 {
 	char temp[512];
+	
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpMkdir(cn, pathname);
+		return NO_ERRORS;
+	}
+	#endif
 	
 	snprintf(temp, 511, "MKD %s", pathname);
 	SendFtpCommand(cn, temp, false);
@@ -2640,8 +2705,11 @@ static void LoadConfig(Connection *cn)
 		q = cfg_string(q, qend, h->port, PORT_COFING_LEN);
 		q = cfg_string(q, qend, h->username, USERNAME_CONFIG_LEN);
 		q = cfg_string(q, qend, h->password, PASSWORD_CONFIG_LEN);
-		if (q && q + 4 <= qend)
-			h->conn_type = get_le32(q) ? CTYPE_PASV : CTYPE_ACTV;
+		if (q && q + 4 <= qend) {
+			LONG t = get_le32(q);
+
+			h->conn_type = (t >= CTYPE_ACTV && t <= CTYPE_SFTP) ? (int) t : CTYPE_PASV;
+		}
 		g_AddressBook.used_hosts++;
 	}
 	FreeMem(mem, size);
@@ -2805,6 +2873,14 @@ void core_cleanup(void)
 	Connection *cn = &g_Connection;
 	ClientInfo *ci = &cn->ci;
 
+	#ifdef MFTP_SSH
+	if (g_sftp)
+		SftpDisconnect(cn);
+	csftp_cleanup();
+	if (g_sftp_buf)
+		FreeMem(g_sftp_buf, SFTP_READ_SIZE);
+	g_sftp_buf = NULL;
+	#endif
 	if (ci->filehandle) {
 		Close(ci->filehandle);
 		ci->filehandle = 0;
@@ -2834,6 +2910,393 @@ void core_cleanup(void)
 	free_buffer(&cn->rv.ListBuffer);
 }
 
+#ifdef MFTP_SSH
+/* ---------------------------------------------------------------------------
+ * SFTP. The session replaces the FTP command connection: the FTP functions
+ * called by the GUI and by the queue (list, CWD, RETR, STOR, DELE, MKD) test
+ * g_sftp first and come here. SFTP has no current directory, so the remote
+ * paths are built from g_sftp_cwd. Transfers advance one block for each
+ * turn of core_run(), the GUI stays responsive.
+ * ------------------------------------------------------------------------- */
+
+static void sftp_join(const char *dir, const char *name, char *out, int size)
+{
+	int n;
+
+	if (name[0] == '/') {
+		caf_strncpy(out, (char *) name, size);
+		return;
+	}
+	caf_strncpy(out, (char *) dir, size);
+	n = caf_strlen(out);
+	if (n == 0 || out[n - 1] != '/')
+		caf_strncat(out, "/", size);
+	caf_strncat(out, (char *) name, size);
+}
+
+/* error of an SFTP operation; a broken connection is closed */
+static void sftp_report(Connection *cn, const char *what)
+{
+	char temp[300];
+
+	snprintf(temp, sizeof(temp), "ERROR: %s: %s", what, sftp_error(g_sftp));
+	gui_status(temp);
+	if (sftp_broken(g_sftp)) {
+		gui_status("ERROR: the SFTP connection is lost");
+		SftpDisconnect(cn);
+	}
+}
+
+/* "drwxr-xr-x" from POSIX mode bits */
+static void perm_str(unsigned long perm, char *out)
+{
+	static const char rwx[] = "rwxrwxrwx";
+	int i;
+
+	switch (perm & 0170000UL) {
+		case 0040000UL: out[0] = 'd'; break;
+		case 0120000UL: out[0] = 'l'; break;
+		default:		out[0] = '-'; break;
+	}
+	for (i = 0; i < 9; i++)
+		out[1 + i] = (perm & (0400UL >> i)) ? rwx[i] : '-';
+	out[10] = 0;
+}
+
+/* Unix time -> "dd-Mmm-yy", like the local list (Amiga epoch is 1978) */
+static void unix_date(unsigned long t, char *out)
+{
+	struct DateStamp ds;
+	unsigned long days = t / 86400UL;
+
+	ds.ds_Days = days > 2922UL ? (LONG) (days - 2922UL) : 0;
+	ds.ds_Minute = (LONG) ((t % 86400UL) / 60UL);
+	ds.ds_Tick = 0;
+	DateStampToStr(out, &ds);
+}
+
+typedef struct SftpListCtx {
+	FileView *rv;
+	int nfiles;
+	bool full;
+} SftpListCtx;
+
+static int sftp_list_cb(void *ctx, const char *name, const char *longname, const SftpAttr *a)
+{
+	SftpListCtx *lc = (SftpListCtx *) ctx;
+	char size[24], flags[16], date[32];
+	ViewColumn *vc;
+	bool is_dir = SFTP_IS_DIR(a) || SFTP_IS_LINK(a);
+
+	if (!strcmp(name, ".") || !strcmp(name, ".."))
+		return 1;
+	if (a->size_hi)
+		strcpy(size, "4GB+");
+	else
+		sprintf(size, "%lu", a->size_lo);
+	if (a->flags & SFTP_ATTR_PERMISSIONS)
+		perm_str(a->perm, flags);
+	else
+		strcpy(flags, "----------");
+	if (a->flags & SFTP_ATTR_ACMODTIME)
+		unix_date(a->mtime, date);
+	else
+		strcpy(date, "N/A");
+	vc = view_add(lc->rv, (char *) name, is_dir ? "<DIR>" : size, flags, date, is_dir);
+	if (!vc || !view_collect(lc->rv, vc, &lc->nfiles)) {
+		lc->full = true;
+		return 0;
+	}
+	return 1;
+}
+
+static void SftpList(Connection *cn)
+{
+	SftpListCtx lc;
+	ViewColumn *vc;
+
+	/* READ/WRITE requests are in flight: the list is done after the transfer
+	   (the queue asks for it when its last transfer starts) */
+	if (cn->ci.b_transfering) {
+		g_sftp_list_pending = true;
+		return;
+	}
+	g_sftp_list_pending = false;
+
+	lc.rv = &cn->rv;
+	lc.nfiles = 0;
+	lc.full = false;
+	view_reset(&cn->rv);
+	vc = view_add(&cn->rv, "..", "<DIR>", "RWED", "N/A", true);
+	if (vc)
+		cn->rv.entries[cn->rv.count++] = vc;
+	if (!sftp_list(g_sftp, g_sftp_cwd, sftp_list_cb, &lc) && !lc.full) {
+		view_finish(&cn->rv, lc.nfiles, GUI_REMOTE);
+		sftp_report(cn, "directory listing");
+		return;
+	}
+	if (lc.full)
+		gui_status("ERROR: Remote listview buffer full, cannot continue directory scan");
+	view_finish(&cn->rv, lc.nfiles, GUI_REMOTE);
+}
+
+static bool SftpConnect(Connection *cn)
+{
+	HostInfo *hi = &cn->hi;
+	int port = hi->port > 0 ? hi->port : 22;
+
+	g_sftp = csftp_open(hi->hostname, port, hi->username, hi->password);
+	if (!g_sftp)
+		return false;
+	if (!g_sftp_buf)
+		g_sftp_buf = (unsigned char *) AllocMem(SFTP_READ_SIZE, MEMF_ANY);
+	if (!g_sftp_buf || !sftp_realpath(g_sftp, ".", g_sftp_cwd, sizeof(g_sftp_cwd))) {
+		gui_status(g_sftp_buf ? "ERROR: SFTP: cannot read the remote directory" : "ERROR: not enough memory");
+		csftp_close(g_sftp);
+		g_sftp = NULL;
+		return false;
+	}
+	cn->ci.b_can_send_command = true;
+	SetConnected(cn, true);
+	caf_strncpy(cn->rv.CurrentPath, g_sftp_cwd, sizeof(cn->rv.CurrentPath));
+	gui_set_path(GUI_REMOTE, cn->rv.CurrentPath);
+	SftpList(cn);
+	return true;
+}
+
+static void SftpFinish(Connection *cn, bool ok);
+
+static void SftpDisconnect(Connection *cn)
+{
+	ClientInfo *ci = &cn->ci;
+	Sftp *f = g_sftp;
+
+	if (!f)
+		return;
+	if (ci->b_transfering && !sftp_broken(f))
+		sftp_xfer_abort(f);
+	g_sftp = NULL;						/* SftpFinish() must not use it */
+	if (ci->b_transfering)
+		SftpFinish(cn, false);
+	csftp_close(f);
+	ci->b_processing_queue = false;
+	ci->b_can_send_command = false;
+	SetConnected(cn, false);
+	gui_status("STATUS: Disconnected");
+}
+
+static void SftpChdir(Connection *cn, char *path)
+{
+	char full[512], real[512];
+	SftpAttr a;
+
+	sftp_join(g_sftp_cwd, path, full, sizeof(full));
+	if (!sftp_realpath(g_sftp, full, real, sizeof(real)) || !sftp_stat(g_sftp, real, &a)) {
+		cn->ci.b_processing_queue = false;
+		sftp_report(cn, "change directory");
+		return;
+	}
+	if (!SFTP_IS_DIR(&a)) {
+		cn->ci.b_processing_queue = false;
+		gui_status("ERROR: change directory: not a directory");
+		return;
+	}
+	caf_strncpy(g_sftp_cwd, real, sizeof(g_sftp_cwd));
+	if (cn->ci.b_processing_queue) {
+		QueueAdvance(cn);
+		return;
+	}
+	caf_strncpy(cn->rv.CurrentPath, real, sizeof(cn->rv.CurrentPath));
+	gui_set_path(GUI_REMOTE, cn->rv.CurrentPath);
+	SftpList(cn);
+}
+
+static void SftpDelete(Connection *cn, char *name)
+{
+	char full[512];
+
+	sftp_join(g_sftp_cwd, name, full, sizeof(full));
+	if (!sftp_remove(g_sftp, full) && (sftp_broken(g_sftp) || !sftp_rmdir(g_sftp, full))) {
+		sftp_report(cn, "delete");
+		if (!g_sftp)
+			return;
+	} else
+		gui_status("STATUS: Deleted");
+	AfterDELE(cn);
+}
+
+static void SftpMkdir(Connection *cn, char *path)
+{
+	char full[512];
+
+	sftp_join(g_sftp_cwd, path, full, sizeof(full));
+	if (!sftp_mkdir(g_sftp, full)) {
+		sftp_report(cn, "make directory");
+		if (!g_sftp)
+			return;
+	}
+	AfterMKD(cn);
+}
+
+static void sftp_info(Connection *cn, bool final)
+{
+	char temp[200];
+	ULONG elapsed_ms, kbs;
+
+	UpdateTimer(&g_gui_update_timer);
+	if (!final && ElapsedMs(&g_gui_update_timer) < 1000)
+		return;
+	UpdateTimer(&g_transfer_start_timer);
+	elapsed_ms = ElapsedMs(&g_transfer_start_timer);
+	kbs = elapsed_ms ? ((ULONG) cn->ci.bytes_transfered / 1024UL) * 1000UL / elapsed_ms : 0;
+	snprintf(temp, sizeof(temp), "%s ... %d bytes %d KB/Sec", final ? "Transfered" : "Transfering",
+			 cn->ci.bytes_transfered, (int) kbs);
+	gui_transfer_info(temp);
+	StartTimer(&g_gui_update_timer);
+}
+
+static int SftpStartTransfer(Connection *cn, char *filename, bool b_download)
+{
+	ClientInfo *ci = &cn->ci;
+	char remote[512], temp[600];
+	char *dir;
+	int chr;
+
+	if (ci->b_transfering) {
+		gui_status(STR_CANT_SEND);
+		return ANSWER_PENDING;
+	}
+	sftp_join(g_sftp_cwd, filename, remote, sizeof(remote));
+	/* same local directories as RETR/STOR */
+	dir = (!b_download && ci->b_processing_queue) ? g_QueueLocalPath : cn->lv.CurrentPath;
+	chr = caf_getlastchar(dir);
+	snprintf(g_sftp_local, sizeof(g_sftp_local), (chr == '/' || chr == ':') ? "%s%s" : "%s/%s", dir, filename);
+
+	ci->filehandle = Open((STRPTR) g_sftp_local, b_download ? MODE_NEWFILE : MODE_OLDFILE);
+	if (!ci->filehandle) {
+		snprintf(temp, sizeof(temp), "ERROR: Cannot open the local file '%s', error %ld", g_sftp_local, IoErr());
+		gui_status(temp);
+		ci->b_processing_queue = false;
+		return FLOW_CONTROL_ERROR;
+	}
+	if (!(b_download ? sftp_get_begin(g_sftp, remote) : sftp_put_begin(g_sftp, remote))) {
+		Close(ci->filehandle);
+		ci->filehandle = 0;
+		if (b_download)
+			DeleteFile((STRPTR) g_sftp_local);
+		ci->b_processing_queue = false;
+		sftp_report(cn, b_download ? "download" : "upload");
+		return FLOW_CONTROL_ERROR;
+	}
+	strncpy(ci->filename, filename, 255);
+	ci->b_file_download = b_download;
+	ci->b_file_transfer = true;
+	ci->b_transfered = false;
+	ci->b_transfering = true;
+	ci->bytes_transfered = 0;
+	StartTimer(&g_transfer_start_timer);
+	StartTimer(&g_gui_update_timer);
+	snprintf(temp, sizeof(temp), "STATUS: SFTP %s %s", b_download ? "download of" : "upload of", filename);
+	gui_status(temp);
+	return NO_ERRORS;
+}
+
+static void SftpFinish(Connection *cn, bool ok)
+{
+	ClientInfo *ci = &cn->ci;
+	bool download = ci->b_file_download;
+
+	if (ci->filehandle) {
+		Close(ci->filehandle);
+		ci->filehandle = 0;
+	}
+	ci->b_transfering = false;
+	ci->b_file_transfer = false;
+	ci->b_transfered = true;
+	sftp_info(cn, true);
+	if (ok)
+		gui_status("STATUS: Transfer complete");
+	else {
+		if (download && g_GlobalSettings.SettingsArray[SETTING_KEEP_PARTIAL] == OPT_DOWNLOAD_DELETE_PARTIAL)
+			DeleteFile((STRPTR) g_sftp_local);
+		if (g_GlobalSettings.SettingsArray[SETTING_QUEUE_TYPE] == OPT_QUEUE_STOP_ON_ERROR)
+			ci->b_processing_queue = false;
+	}
+	if (!g_sftp)						/* the connection is gone */
+		return;
+	if (download)
+		AfterRETR(cn);
+	else
+		AfterSTOR(cn);
+	if (g_sftp && g_sftp_list_pending && !ci->b_transfering)
+		SftpList(cn);
+}
+
+/* one block of the transfer in progress, called by core_run() */
+static void SftpTransferStep(Connection *cn)
+{
+	ClientInfo *ci = &cn->ci;
+	const unsigned char *d;
+	int n, r;
+
+	if (ci->b_file_download) {
+		r = sftp_get_step(g_sftp, &d, &n);
+		if (r == 1) {
+			if (Write(ci->filehandle, (APTR) d, n) != n) {
+				gui_status("ERROR: cannot write the local file (disk full?)");
+				sftp_xfer_abort(g_sftp);
+				SftpFinish(cn, false);
+				return;
+			}
+			ci->bytes_transfered += n;
+			sftp_info(cn, false);
+			return;
+		}
+		if (r < 0) {
+			sftp_report(cn, "download");
+			if (g_sftp)
+				SftpFinish(cn, false);
+			return;
+		}
+		SftpFinish(cn, true);
+		return;
+	}
+	n = Read(ci->filehandle, g_sftp_buf, SFTP_READ_SIZE);
+	if (n < 0) {
+		gui_status("ERROR: cannot read the local file");
+		sftp_xfer_abort(g_sftp);
+		SftpFinish(cn, false);
+		return;
+	}
+	if (n > 0) {
+		if (!sftp_put_step(g_sftp, g_sftp_buf, n)) {
+			sftp_report(cn, "upload");
+			if (g_sftp)
+				SftpFinish(cn, false);
+			return;
+		}
+		ci->bytes_transfered += n;
+		sftp_info(cn, false);
+		return;
+	}
+	if (!sftp_put_end(g_sftp)) {
+		sftp_report(cn, "upload");
+		if (g_sftp)
+			SftpFinish(cn, false);
+		return;
+	}
+	SftpFinish(cn, true);
+}
+
+static void SftpAbort(Connection *cn)
+{
+	sftp_xfer_abort(g_sftp);
+	cn->ci.b_processing_queue = false;
+	gui_status("STATUS: Transfer aborted by user");
+	SftpFinish(cn, false);
+}
+#endif /* MFTP_SSH */
+
 /* ---------------------------------------------------------------------------
  * Main loop: waits on the sockets (WaitSelect) and on the GUI signals
  * ------------------------------------------------------------------------- */
@@ -2853,6 +3316,16 @@ void core_run(void)
 	for (;;) {
 		sigs = 0;
 				sigmask = gui_signals() | SIGBREAKF_CTRL_C;
+				#ifdef MFTP_SSH
+				if (g_sftp) {
+					if (ci->b_transfering) {
+						/* poll the GUI signals, then one block */
+						sigs = SetSignal(0L, sigmask) & sigmask;
+						SftpTransferStep(cn);
+					} else
+						sigs = Wait(sigmask);
+				} else
+				#endif
 				if (ci->cmd_socket == INVALID_SOCKET && cn->ci.b_connecting == false && cn->ci.b_connected == false) {
 					#ifdef DEBUGLV3
 					DebugOutput("MainLoop(): Wait()\n");
@@ -3168,6 +3641,15 @@ void core_stop(void)
 	Connection *cn = &g_Connection;
 
 	cn->ci.b_processing_queue = false;
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		if (cn->ci.b_transfering)
+			SftpAbort(cn);
+		else
+			gui_status("STATUS: Nothing to abort");
+		return;
+	}
+	#endif
 	if (cn->ci.b_transfering) {
 		AbortFileTransfer(cn);
 	} else if (cn->ci.b_connecting) {
@@ -3182,6 +3664,13 @@ void core_request_quit(void)
 {
 	Connection *cn = &g_Connection;
 
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpDisconnect(cn);
+		g_quit_now = true;
+		return;
+	}
+	#endif
 	if (cn->ci.b_connected == false) {
 		g_quit_now = true;
 	} else if (cn->ci.b_transfering) {
@@ -3258,6 +3747,12 @@ void core_remote_parent(void)
 {
 	Connection *cn = &g_Connection;
 
+	#ifdef MFTP_SSH
+	if (g_sftp) {
+		SftpChdir(cn, "..");
+		return;
+	}
+	#endif
 	if (cn->ci.b_can_send_command)
 		SendFtpCommand(cn, "CDUP", false);
 	else
@@ -3300,10 +3795,22 @@ void core_remote_open(int index)
 		else {
 			chr = caf_getlastchar(cn->rv.CurrentPath);
 			if (chr == ':' || chr == '/')
-				snprintf(temp, 511, "CWD %s%s", cn->rv.CurrentPath, vc->name);
+				snprintf(temp, 511, "%s%s", cn->rv.CurrentPath, vc->name);
 			else
-				snprintf(temp, 511, "CWD %s/%s", cn->rv.CurrentPath, vc->name);
-			SendFtpCommand(cn, temp, false);
+				snprintf(temp, 511, "%s/%s", cn->rv.CurrentPath, vc->name);
+			#ifdef MFTP_SSH
+			/* a symbolic link may point to a file */
+			if (g_sftp && vc->flags && vc->flags[0] == 'l') {
+				char real[512];
+				SftpAttr a;
+
+				if (sftp_realpath(g_sftp, temp, real, sizeof(real)) && sftp_stat(g_sftp, real, &a) && !SFTP_IS_DIR(&a)) {
+					InitiateFileTransfer(cn, vc->name, true);
+					return;
+				}
+			}
+			#endif
+			SendCWDCMD(cn, temp);
 		}
 	} else
 		InitiateFileTransfer(cn, vc->name, true);		/* download */

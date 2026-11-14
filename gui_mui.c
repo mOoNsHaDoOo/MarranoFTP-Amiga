@@ -132,6 +132,7 @@ static const char *g_AddressBook_ConnectionTypes[] =
 {
 	"Active",
 	"Passive",
+	"SFTP",
 	NULL
 };
 
@@ -938,7 +939,7 @@ static void OnSiteWindowChange(void)
 	caf_strncpy(h.username, string_of(gab.S_USERNAME), USERNAME_CONFIG_LEN);
 	caf_strncpy(h.password, string_of(gab.S_PASSWORD), PASSWORD_CONFIG_LEN);
 	get(gab.RDIO_CONN_TYPE, MUIA_Radio_Active, &itmp);
-	h.conn_type = itmp ? CTYPE_PASV : CTYPE_ACTV;
+	h.conn_type = (int) itmp;		/* CTYPE_ACTV, CTYPE_PASV, CTYPE_SFTP */
 
 	if (gab.b_new_entry) {
 		int idx = core_host_add(&h);

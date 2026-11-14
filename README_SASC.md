@@ -13,6 +13,7 @@ Tre programmi dallo stesso core FTP:
 | File | Contenuto |
 |------|-----------|
 | `core.h`, `ftp_core.c` | protocollo FTP, socket, coda, configurazione. Nessun codice di interfaccia, solo chiamate compatibili OS 1.3 (niente dos/exec V36, niente iffparse, niente floating point) |
+| `ssh.c`, `sftp.c`, `core_sftp.c` | SFTP (vedi sotto) |
 | `ftp_list.c/h` | parser delle risposte a LIST (Unix, DOS/IIS, EPLF, Netware...), C puro |
 | `gui.h` | il contratto che ogni GUI implementa (`gui_status`, `gui_set_list`, `gui_get_selection`, ...) |
 | `gui_mui.c` | GUI MUI 3.8 + NList, usata da **MarranoFTP** (Kickstart 2.04+, AROS, MorphOS) |
@@ -68,6 +69,54 @@ emulazione (72 KB contro 115 KB):
 - solo funzioni V33 (1.2): `OpenWindow`, `AddGList`, `RefreshGList`, `NewModifyProp`,
   `GetScreenData`, `SetMenuStrip`, `ActivateGadget`...
 
+## SFTP
+
+I tre programmi parlano anche SFTP: nella rubrica il tipo di connessione è
+Active / Passive / **SFTP** (porta di solito 22). Con un host SFTP lista, cambio
+directory, Parent, download, upload, delete, makedir e coda funzionano come con FTP.
+
+| File | Contenuto |
+|------|-----------|
+| `ssh.c/h` | client SSH-2: scambio chiavi `curve25519-sha256` e `diffie-hellman-group14-sha256/sha1`, chiavi host `ssh-ed25519`, `rsa-sha2-256/512`, `ssh-rsa`, cifratura `aes128-ctr`/`aes256-ctr`, MAC `hmac-sha2-256`/`hmac-sha1`, login con password o keyboard-interactive, rekey, strict KEX (contromisura Terrapin) |
+| `sftp.c/h` | SFTP versione 3, con 4 richieste READ/WRITE da 16 KB in volo; i trasferimenti avanzano un blocco per giro del ciclo principale, la GUI resta reattiva |
+| `ssh_crypto.h` | le funzioni OpenSSL usate, dichiarate a mano per SAS/C + pragmas di AmiSSL (gli header di OpenSSL 3 non sono leggibili da SAS/C 6) |
+| `core_sftp.c/h` | apertura di AmiSSL, socket con timeout, chiavi host note |
+| `tests/test_sftp_linux.c` | prova degli stessi `ssh.c`/`sftp.c` su Linux con OpenSSL |
+
+- **Requisiti a runtime**: AmigaOS 3.0+, 68020+, **AmiSSL 5.25 o più recente** installato
+  (`LIBS:amisslmaster.library`, `LIBS:AmiSSL/amissl_v3xx.library`, assign `AmiSSL:`),
+  circa **3,5 MB di memoria libera** per AmiSSL. AmiSSL viene aperto solo alla prima
+  connessione SFTP: senza AmiSSL (o su OS 1.3) i programmi funzionano lo stesso e
+  segnalano solo che SFTP non è disponibile.
+- **Chiavi host**: al primo collegamento il fingerprint (`SHA256:...`, lo stesso di
+  `ssh-keygen -l`) viene salvato in `PROGDIR:marranoftp.hosts` (o `S:`); se in seguito
+  cambia, la connessione viene rifiutata con un messaggio esplicito. Per accettare una
+  chiave nuova basta togliere la riga corrispondente dal file.
+- **Non supportati**: autenticazione con chiave pubblica, compressione, file oltre 4 GB
+  (SAS/C non ha interi a 64 bit; la dimensione viene mostrata come `4GB+`).
+- **Memoria della versione MUI**: MarranoFTP alloca circa 3,8 MB di buffer FTP, che
+  con AmiSSL superano gli 8 MB di Fast RAM di un A1200 base. Su un A1200 emulato
+  con 8 MB SFTP funziona con MarranoFTPI e MarranoFTP13GD (buffer ridotti); la versione
+  MUI è stata provata con 64 MB.
+
+### Prove SFTP (14/11/2026)
+
+Su Linux contro OpenSSH 9.6 (`tests/test_sftp_linux.c`): tutte le combinazioni di
+algoritmi (curve25519, DH group14 sha256/sha1, Ed25519, RSA sha2-256/512 e ssh-rsa,
+aes128/256-ctr, hmac-sha2-256/sha1), keyboard-interactive via PAM, rekey ogni 64 KB,
+password errata, server che accetta solo chiavi pubbliche, download/upload di 150 KB
+con MD5 identico, mkdir, rename, remove, rmdir.
+
+In FS-UAE, A1200 KS 3.1, AmiSSL 5.27, TheWire13 + slipbridge verso lo stesso sshd:
+
+| Prova | MarranoFTP | 13GD | I |
+|-------|-----------|------|---|
+| connessione, chiave host salvata e poi riconosciuta, lista | ok (64 MB) | ok | ok |
+| download + upload 20000 byte, MD5 identico | - | - | ok |
+| cambio directory, Parent, delete | - | - | ok |
+| coda di due download | - | ok | - |
+| Disconnect / Quit (`disconnect 11: bye`, RC=0) | ok | ok | ok |
+
 ## Requisiti
 
 Per compilare:
@@ -80,6 +129,8 @@ Per compilare:
   non fanno parte dell'SDK di MUI)
 - per **MarranoFTP13GD**: `GTE/GTE.lib` e `GTE/nl_gadtools.h`, già nel progetto
 - per **MarranoFTPI**: niente oltre all'NDK
+- per SFTP (tutti e tre): la cartella `Developer/include` dell'SDK di AmiSSL 5.25+ in `INCLUDE:`
+  (servono solo `pragmas/` e `libraries/amisslmaster.h`)
 
 Per eseguire:
 
@@ -97,14 +148,14 @@ La configurazione (`marranoftp.moo`) è cercata in `MARRANO:`, `PROGDIR:` (solo 
 
 | Assign | Punta a |
 |--------|---------|
-| `INCLUDE:` | NDK `Include_H` + `SC:include` (e, per MarranoFTP, MUI `C/Include` + NList `C/include`) |
+| `INCLUDE:` | NDK `Include_H` + `SC:include` + AmiSSL SDK `Developer/include` (e, per MarranoFTP, MUI `C/Include` + NList `C/include`) |
 | `LIB:` | `SC:lib` |
 | `NETINCLUDE:` | netinclude di Roadshow o di AmiTCP (è in `SCOPTIONS` come `INCLUDEDIR`) |
 
 `CafLib/include` è già in `SCOPTIONS`, non serve un assign. Esempio su un Amiga:
 
 ```
-Assign INCLUDE: NDK:Include_H SC:include MUI:Developer/C/Include NList:Developer/C/include
+Assign INCLUDE: NDK:Include_H SC:include MUI:Developer/C/Include NList:Developer/C/include AmiSSL-SDK:Developer/include
 Assign NETINCLUDE: NDK:SANA+RoadshowTCP-IP/netinclude   ; oppure AmiTCP-SDK-4.3/netinclude
 ```
 
