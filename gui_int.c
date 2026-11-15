@@ -93,7 +93,7 @@ enum {
 enum { MN_SITES, MN_SETTINGS, MN_SAVECFG, MN_ABOUT, MN_QUIT, MN_COUNT };
 
 /* labels of the toggle buttons: same length, they are drawn with JAM2 */
-static char *ConnTypes[] = { "Active ", "Passive", "SFTP   " };
+static char *ConnTypes[] = { "Active    ", "Passive   ", "SFTP      ", "FTPS      ", "FTPS impl." };
 static char *QueueTypes[] = { "Stop at error", "Process all  " };
 static char *PartialTypes[] = { "Delete", "Keep  " };
 
@@ -687,7 +687,7 @@ static void ab_show(int index)
 	str_set(&g_ab_str[2], win, h->port);
 	str_set(&g_ab_str[3], win, h->username);
 	str_set(&g_ab_str[4], win, h->password);
-	g_ab_conn_type = h->conn_type >= CTYPE_ACTV && h->conn_type <= CTYPE_SFTP ? h->conn_type : CTYPE_ACTV;
+	g_ab_conn_type = h->conn_type >= CTYPE_ACTV && h->conn_type <= CTYPE_FTPS_IMPLICIT ? h->conn_type : CTYPE_ACTV;
 	btn_label(&g_ab_type, win, ConnTypes[g_ab_conn_type]);
 }
 
@@ -747,7 +747,7 @@ static void open_ab(void)
 	il_layout(&g_ab, &g_ab_l, x0, y, lw, ((6 * (STR_H + GAP) - GAP - 4) / FH) * FH + 4, NULL, host_line);
 	for (i = 0; i < 5; i++)
 		str_init(&g_ab, &g_ab_str[i], fx, y + i * (STR_H + GAP), fw, maxc[i], ids[i]);
-	btn_init(&g_ab, &g_ab_type, fx, y + 5 * (STR_H + GAP), 9 * FW, BTN_H, ConnTypes[0], GID_AB_TYPE);
+	btn_init(&g_ab, &g_ab_type, fx, y + 5 * (STR_H + GAP), 12 * FW, BTN_H, ConnTypes[0], GID_AB_TYPE);
 	g_ab_lx = fx - 9 * FW;
 	g_ab_ly = y;
 	y = g_ab.win->Height - g_ab.win->BorderBottom - GAP - BTN_H;
@@ -835,7 +835,7 @@ static void ab_event(ULONG class, UWORD code, struct Gadget *gad, WORD mx, WORD 
 		return;
 	switch (gad->GadgetID) {
 		case GID_AB_TYPE:
-			g_ab_conn_type = (g_ab_conn_type + 1) % 3;
+			g_ab_conn_type = (g_ab_conn_type + 1) % 5;
 			btn_label(&g_ab_type, g_ab.win, ConnTypes[g_ab_conn_type]);
 			break;
 		case GID_AB_NEW:

@@ -133,6 +133,8 @@ static const char *g_AddressBook_ConnectionTypes[] =
 	"Active",
 	"Passive",
 	"SFTP",
+	"FTPS",
+	"FTPS implicit (990)",
 	NULL
 };
 
@@ -672,9 +674,8 @@ bool gui_open(void)
 					Child, HGroup,
 						Child, VGroup,
 							Child, TextObject, MUIA_Text_Contents, "Transfer type", End,
-							Child, gab.RDIO_CONN_TYPE = RadioObject,
-								MUIA_Group_Horiz, TRUE,
-								MUIA_Radio_Entries, g_AddressBook_ConnectionTypes,
+							Child, gab.RDIO_CONN_TYPE = CycleObject,
+								MUIA_Cycle_Entries, g_AddressBook_ConnectionTypes,
 							End,
 						End,
 					End,
@@ -900,7 +901,7 @@ static void UpdateSiteWindowContents(int active)
 	set(gab.S_PORT, MUIA_String_Contents, (IPTR) hst->port);
 	set(gab.S_USERNAME, MUIA_String_Contents, (IPTR) hst->username);
 	set(gab.S_PASSWORD, MUIA_String_Contents, (IPTR) hst->password);
-	set(gab.RDIO_CONN_TYPE, MUIA_Radio_Active, hst->conn_type);
+	set(gab.RDIO_CONN_TYPE, MUIA_Cycle_Active, hst->conn_type);
 }
 
 static void UpdateSiteWindow(int active)
@@ -922,7 +923,7 @@ static void OnSiteWindowNew(void)
 	set(gab.S_PORT, MUIA_String_Contents, (IPTR) "21");
 	set(gab.S_USERNAME, MUIA_String_Contents, (IPTR) "");
 	set(gab.S_PASSWORD, MUIA_String_Contents, (IPTR) "");
-	set(gab.RDIO_CONN_TYPE, MUIA_Radio_Active, 0);
+	set(gab.RDIO_CONN_TYPE, MUIA_Cycle_Active, 0);
 	set(gab.Window, MUIA_Window_ActiveObject, gab.S_ENTRYNAME);
 	EvalSiteWindowStatus();
 }
@@ -938,7 +939,7 @@ static void OnSiteWindowChange(void)
 	caf_strncpy(h.port, string_of(gab.S_PORT), PORT_COFING_LEN);
 	caf_strncpy(h.username, string_of(gab.S_USERNAME), USERNAME_CONFIG_LEN);
 	caf_strncpy(h.password, string_of(gab.S_PASSWORD), PASSWORD_CONFIG_LEN);
-	get(gab.RDIO_CONN_TYPE, MUIA_Radio_Active, &itmp);
+	get(gab.RDIO_CONN_TYPE, MUIA_Cycle_Active, &itmp);
 	h.conn_type = (int) itmp;		/* CTYPE_ACTV, CTYPE_PASV, CTYPE_SFTP */
 
 	if (gab.b_new_entry) {

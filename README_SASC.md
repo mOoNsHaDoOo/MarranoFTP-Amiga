@@ -14,6 +14,7 @@ Tre programmi dallo stesso core FTP:
 |------|-----------|
 | `core.h`, `ftp_core.c` | protocollo FTP, socket, coda, configurazione. Nessun codice di interfaccia, solo chiamate compatibili OS 1.3 (niente dos/exec V36, niente iffparse, niente floating point) |
 | `ssh.c`, `sftp.c`, `core_sftp.c` | SFTP (vedi sotto) |
+| `tls.c` | FTPS (vedi sotto) |
 | `ftp_list.c/h` | parser delle risposte a LIST (Unix, DOS/IIS, EPLF, Netware...), C puro |
 | `gui.h` | il contratto che ogni GUI implementa (`gui_status`, `gui_set_list`, `gui_get_selection`, ...) |
 | `gui_mui.c` | GUI MUI 3.8 + NList, usata da **MarranoFTP** (Kickstart 2.04+, AROS, MorphOS) |
@@ -72,7 +73,7 @@ emulazione (72 KB contro 115 KB):
 ## SFTP
 
 I tre programmi parlano anche SFTP: nella rubrica il tipo di connessione è
-Active / Passive / **SFTP** (porta di solito 22). Con un host SFTP lista, cambio
+Active / Passive / **SFTP** / FTPS / FTPS implicit (porta di solito 22 per SFTP). Con un host SFTP lista, cambio
 directory, Parent, download, upload, delete, makedir e coda funzionano come con FTP.
 
 | File | Contenuto |
@@ -116,6 +117,55 @@ In FS-UAE, A1200 KS 3.1, AmiSSL 5.27, TheWire13 + slipbridge verso lo stesso ssh
 | cambio directory, Parent, delete | - | - | ok |
 | coda di due download | - | ok | - |
 | Disconnect / Quit (`disconnect 11: bye`, RC=0) | ok | ok | ok |
+
+## FTPS
+
+Nella rubrica ci sono anche **FTPS** (esplicito: `AUTH TLS` sulla porta FTP, di solito 21)
+e **FTPS implicit (990)** (TLS subito dopo la connessione). Comandi, password e connessioni
+dati sono cifrati (`PBSZ 0` + `PROT P`); le connessioni dati sono sempre passive.
+
+| File | Contenuto |
+|------|-----------|
+| `tls.c/h` | TLS con AmiSSL (TLS 1.2 minimo); AmiSSL non tocca i socket: due BIO in memoria e gli stessi `send()`/`recv()` dell'FTP in chiaro, quindi funziona con qualunque stack e con i socket non bloccanti del core |
+| `tests/test_ftps_linux.c` | prova di `tls.c` su Linux contro vsftpd |
+
+- **Connessione dati**: l'handshake TLS si fa quando il server risponde 150/125 a
+  `LIST`/`RETR`/`STOR`, riusando la sessione TLS del canale comandi (vsftpd e altri server
+  lo esigono, `require_ssl_reuse`); prima di allora sulla connessione dati non passa nulla.
+- **Certificati**: catena verificata con i certificati CA di AmiSSL (`AmiSSL:Certs`) e
+  nome dell'host. Se la verifica non riesce (certificato self-signed, indirizzo IP, CA
+  sconosciuta) si usa lo stesso "trust on first use" delle chiavi SSH: il fingerprint
+  `SHA256:...` viene salvato in `marranoftp.hosts` (tipo `x509`) e un certificato diverso
+  in seguito viene rifiutato.
+- **Nessun ripiego in chiaro**: se il server rifiuta `AUTH TLS` la connessione viene chiusa
+  prima di inviare la password; se rifiuta solo `PROT P` si prosegue con i dati in chiaro
+  e un avviso.
+- I dati già decifrati che TLS tiene in memoria vengono considerati dal ciclo principale
+  (che altrimenti aspetterebbe in `WaitSelect()`), e un record TLS ricevuto a metà conta
+  come attività per il timeout di trasferimento (importante sulle linee lente).
+- Alla chiusura di una connessione TLS si attende il `close_notify` del server leggendo
+  quello che resta: chiudere un socket con dati non letti (per esempio i session ticket
+  TLS 1.3) manda un RST e il server può perdere la fine di un upload.
+
+### Prove FTPS (14/11/2026)
+
+Su Linux contro vsftpd 3.0.5 (`require_ssl_reuse=YES`, `force_local_data_ssl=YES`,
+certificato self-signed), con `tests/test_ftps_linux.c`: esplicito e implicito, tre giri
+ciascuno, download + upload + LIST, MD5 identico e trasferimenti completi nel log del server.
+
+In FS-UAE, A1200 KS 3.1, AmiSSL 5.27, TheWire13 + slipbridge, verso gli stessi vsftpd:
+
+| Prova | MarranoFTP (MUI, 64 MB) | MarranoFTPI |
+|-------|------------------|-------------|
+| FTPS esplicito: AUTH TLS, login, PBSZ/PROT P, LIST cifrata | ok | ok |
+| FTPS esplicito: download + upload 20000 byte, MD5 identico | - | ok |
+| FTPS implicito: login, LIST, download | - | ok |
+| certificato self-signed: avviso + fingerprint salvato | ok | ok |
+| Quit (`QUIT`/`221` sul canale TLS), RC=0 | ok | ok |
+| FTP in chiaro subito dopo una sessione FTPS | ok | - |
+
+Senza l'assign `AmiSSL:` (installazione incompleta) non compaiono richieste "inserisci il
+volume": la verifica con le CA fallisce e si passa al fingerprint.
 
 ## Requisiti
 

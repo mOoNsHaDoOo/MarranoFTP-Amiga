@@ -18,4 +18,10 @@ void csftp_close(Sftp *f);
 /* Closes AmiSSL, at the end of the program */
 void csftp_cleanup(void);
 
+/* Shared with tls.c (FTPS) */
+bool core_amissl_open(void);
+/* Trust on first use: 1 if the key/certificate fingerprint of host:port is
+   the saved one or new (then it is saved), 0 if it changed */
+int core_known_host(const char *host, int port, const char *type, const char *fingerprint);
+
 #endif

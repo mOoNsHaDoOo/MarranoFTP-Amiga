@@ -1,5 +1,5 @@
 /*
- * SSH_CRYPTO.H - the OpenSSL functions used by ssh.c.
+ * SSH_CRYPTO.H - the OpenSSL functions used by ssh.c and tls.c.
  *
  * On the Amiga they come from AmiSSL (amissl.library). The OpenSSL 3 headers
  * shipped with the AmiSSL SDK cannot be read by SAS/C 6 (the safestack macros
@@ -83,6 +83,61 @@ int BN_is_one(const BIGNUM *a);
 const BIGNUM *BN_value_one(void);
 int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
+/* TLS (tls.c, FTPS) */
+typedef struct ssl_ctx_st SSL_CTX;
+typedef struct ssl_st SSL;
+typedef struct ssl_method_st SSL_METHOD;
+typedef struct ssl_session_st SSL_SESSION;
+typedef struct bio_st BIO;
+typedef struct bio_method_st BIO_METHOD;
+typedef struct x509_st X509;
+
+#define SSL_VERIFY_NONE					0x00
+#define SSL_ERROR_WANT_READ				2
+#define SSL_ERROR_WANT_WRITE			3
+#define SSL_ERROR_ZERO_RETURN			6
+#define SSL_CTRL_MODE					33
+#define SSL_CTRL_SET_TLSEXT_HOSTNAME	55
+#define SSL_CTRL_SET_MIN_PROTO_VERSION	123
+#define SSL_MODE_ENABLE_PARTIAL_WRITE	0x00000001UL
+#define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002UL
+#define TLS1_2_VERSION					0x0303
+#define TLSEXT_NAMETYPE_host_name		0
+#define X509_V_OK						0
+
+const SSL_METHOD *TLS_client_method(void);
+SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth);
+void SSL_CTX_free(SSL_CTX *ctx);
+long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
+void SSL_CTX_set_verify(SSL_CTX *ctx, int mode, void *callback);
+int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
+SSL *SSL_new(SSL_CTX *ctx);
+void SSL_free(SSL *ssl);
+void SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio);
+void SSL_set_connect_state(SSL *s);
+int SSL_connect(SSL *ssl);
+int SSL_read(SSL *ssl, void *buf, int num);
+int SSL_write(SSL *ssl, const void *buf, int num);
+int SSL_get_error(const SSL *s, int ret_code);
+int SSL_shutdown(SSL *s);
+long SSL_get_verify_result(const SSL *ssl);
+int SSL_set1_host(SSL *s, const char *hostname);
+long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg);
+SSL_SESSION *SSL_get1_session(SSL *ssl);
+int SSL_set_session(SSL *to, SSL_SESSION *session);
+void SSL_SESSION_free(SSL_SESSION *ses);
+X509 *SSL_get1_peer_certificate(const SSL *s);
+int SSL_has_pending(const SSL *s);
+int X509_digest(const X509 *data, const EVP_MD *type, unsigned char *md, unsigned int *len);
+void X509_free(X509 *a);
+const char *X509_verify_cert_error_string(long n);
+BIO *BIO_new(const BIO_METHOD *type);
+const BIO_METHOD *BIO_s_mem(void);
+int BIO_read(BIO *b, void *data, int dlen);
+int BIO_write(BIO *b, const void *data, int dlen);
+unsigned long ERR_get_error(void);
+void ERR_error_string_n(unsigned long e, char *buf, size_t len);
+
 /* the SDK pragma file has names longer than 31 characters that collide
    once truncated (Warning 84): none of them is used here */
 #pragma msg 84 ignore push
@@ -97,6 +152,9 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 #include <openssl/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/obj_mac.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <openssl/err.h>
 
 #endif
 

@@ -61,6 +61,14 @@
 #include "gui.h"
 #ifdef MFTP_SSH
 #include "core_sftp.h"
+#include "tls.h"
+#else
+/* without AmiSSL: plain sockets */
+#define tls_send(s, b, l)	send(s, b, l, 0)
+#define tls_recv(s, b, l)	recv(s, b, l, 0)
+#define tls_pending(s)		0
+#define tls_close(s)
+#define TLS_NO_DATA			(-2)
 #endif
 
 /* ---------------------------------------------------------------------------
@@ -502,6 +510,12 @@ void HandleDownload(Connection *cn)
 	
 	/******************************************* DOWNLOAD ****************************************/
 	// Transfer socket event happened while we are transfering, 
+	#ifdef MFTP_SSH
+	if (ci->b_prot_p && !tls_active(ci->transfer_socket)) {
+		StartTimer(&g_last_packet_transfered_timer);
+		return;					/* FTPS: before the data handshake */
+	}
+	#endif
 	// we have received data
 	if (ci->b_file_transfer == false) {
 		#ifdef DEBUG
@@ -527,7 +541,12 @@ void HandleDownload(Connection *cn)
 			return;
 		}
 		
-		res = recv(ci->transfer_socket, &cn->transfer_buffer.ptr[ci->bytes_transfered], RECV_CHUNK, 0);
+		res = tls_recv(ci->transfer_socket, &cn->transfer_buffer.ptr[ci->bytes_transfered], RECV_CHUNK);
+		if (res == TLS_NO_DATA) {
+			/* FTPS: part of a TLS record arrived, it is still progress */
+			StartTimer(&g_last_packet_transfered_timer);
+			return;
+		}
 		if (res > 0)
 			cn->transfer_buffer.ptr[ci->bytes_transfered+res] = 0;
 	} else {
@@ -537,7 +556,11 @@ void HandleDownload(Connection *cn)
 		
 		// If we are transfering a file, we do not need a big buffer, stuff will be
 		// written to disk
-		res = recv(ci->transfer_socket, cn->transfer_buffer.ptr, RECV_CHUNK, 0);
+		res = tls_recv(ci->transfer_socket, cn->transfer_buffer.ptr, RECV_CHUNK);
+		if (res == TLS_NO_DATA) {
+			StartTimer(&g_last_packet_transfered_timer);
+			return;
+		}
 	}
 	
 	if (res > 0) {
@@ -620,6 +643,14 @@ void HandleUpload(Connection *cn)
 	// Transfer socket event happened, we can send data
 	
 	/* UPLOAD */
+	#ifdef MFTP_SSH
+	/* FTPS: nothing in clear on the data connection, the TLS handshake is
+	   done when the server answers 150 to STOR */
+	if (ci->b_prot_p && !tls_active(ci->transfer_socket)) {
+		StartTimer(&g_last_packet_transfered_timer);
+		return;
+	}
+	#endif
 	local_errno = 0;
 	if (ci->file_readed == 0) {
 		ci->file_readed = Read(ci->filehandle, cn->transfer_buffer.ptr, RECV_CHUNK);
@@ -643,7 +674,12 @@ void HandleUpload(Connection *cn)
 		res = -1;
 	} else {
 		if (ci->file_readed) {
-			res = send(ci->transfer_socket, &cn->transfer_buffer.ptr[ci->file_sent], ci->file_readed, 0);
+			res = tls_send(ci->transfer_socket, &cn->transfer_buffer.ptr[ci->file_sent], ci->file_readed);
+			if (res == TLS_NO_DATA) {
+				/* FTPS: the data handshake is done when the 150 arrives */
+				StartTimer(&g_last_packet_transfered_timer);
+				return;
+			}
 			if (res > 0) {
 				ci->file_readed -= res;
 				ci->file_sent += res;
@@ -724,7 +760,12 @@ bool FtpConnect(Connection *cn)
 	#ifdef MFTP_SSH
 	if (hi->conn_type == CTYPE_SFTP)
 		return SftpConnect(cn);
+	if (hi->tls != TLS_NONE && !tls_init()) {
+		gui_status("ERROR: FTPS needs AmiSSL");
+		return false;
+	}
 	#endif
+	ci->b_prot_p = false;
 	
 	// Resolve site hostname
 	ent = gethostbyname(hi->hostname);
@@ -1056,6 +1097,7 @@ void InvalidateSocket(int *socket)
 	#endif
 	
 	if (*socket != INVALID_SOCKET) {
+		tls_close(*socket);			/* FTPS: close_notify, it ends an upload */
 		shutdown(*socket, 0);
 		CloseSocket(*socket);
 	}
@@ -1244,8 +1286,11 @@ int GetFtpCommand(struct buffer *buffer, Connection *cn)
 	caf_memset(buffer->ptr, 0, buffer->size);
 	
 //	while ((ret = ReadSocketNB(&buffer->ptr[readed], ci->cmd_socket, 1, g_GlobalSettings.socket_timeout, 0)) == true) {
-	while (CanReadSocket(ci->cmd_socket, 0, 0) == SOCKET_SELECT_OK) {
-		ret = recv(ci->cmd_socket, &buffer->ptr[readed], 1, 0);
+	/* with FTPS bytes may wait inside TLS while the socket is not readable */
+	while (tls_pending(ci->cmd_socket) || CanReadSocket(ci->cmd_socket, 0, 0) == SOCKET_SELECT_OK) {
+		ret = tls_recv(ci->cmd_socket, &buffer->ptr[readed], 1);
+		if (ret == TLS_NO_DATA)
+			break;					/* part of a TLS record: the rest later */
 		if (ret <= 0) {
 			// Connection closed or error: the old code went on looping
 			// (the socket stays readable) until the buffer was full
@@ -1337,7 +1382,7 @@ int SendFtpCommand(Connection *cn, char *CMD, bool b_block)
 	written = 0;
 	while ((to_write > written) && (CanWriteSocket(ci->cmd_socket, 0, 0) == SOCKET_SELECT_OK)) {
 		// send() returning -1 made "written" go backwards (&temp[-1])
-		ret = send(ci->cmd_socket, &temp[written], to_write-written, 0);
+		ret = tls_send(ci->cmd_socket, &temp[written], to_write-written);
 		if (ret <= 0)
 			break;
 		written += ret;
@@ -1367,6 +1412,19 @@ bool ProcessError(Connection *cn, int command)
 	return false;
 }
 
+/* FTPS refused by the server: never fall back to a clear login */
+static void FtpsRefused(Connection *cn)
+{
+	if (IsLastSentCmd("AUTH")) {
+		gui_status("ERROR: the server does not support FTPS (AUTH TLS refused), disconnected");
+		CleanSockAndFlags(cn);
+	} else {
+		cn->ci.b_prot_p = false;
+		gui_status("WARNING: FTPS: the server refuses encrypted data connections, data will be in clear");
+		SendPWDCMD(cn);
+	}
+}
+
 void ProcessCommand(Connection *cn, int command)
 {
 	ClientInfo *ci = &cn->ci;
@@ -1381,21 +1439,48 @@ void ProcessCommand(Connection *cn, int command)
 /*********************************************	DIGIT 1 *****************************************/
 			// Positive Preliminary reply, expect another reply before sending commands
 			cn->ci.b_can_send_command = false;
-			if (IsLastSentCmd("LIST")) {
-			} else if (IsLastSentCmd("RETR")) {
+			#ifdef MFTP_SSH
+			/* FTPS: the server waits for the TLS handshake on the data connection */
+			if (ci->b_prot_p && (IsLastSentCmd("LIST") || IsLastSentCmd("RETR") || IsLastSentCmd("STOR"))
+				&& ci->transfer_socket != INVALID_SOCKET && !tls_active(ci->transfer_socket)) {
+				if (!tls_start(ci->transfer_socket, NULL, 0, ci->cmd_socket)) {
+					gui_status("ERROR: FTPS: TLS failed on the data connection");
+					CloseDataSocket(cn);
+				}
+				/* the handshake may take seconds on a slow line */
+				StartTimer(&g_last_packet_transfered_timer);
 			}
+			#endif
 			break;
 			
 		case 2:
 /*********************************************	DIGIT 2 *****************************************/
 			// Positive Completion reply, we can send commands
 			cn->ci.b_can_send_command = true;
-			if (IsLastSentCmd("CONN")) {
+			if (IsLastSentCmd("CONN") && hi->tls == TLS_EXPLICIT) {
+				SendFtpCommand(cn, "AUTH TLS", false);
+			} else if (IsLastSentCmd("CONN") || IsLastSentCmd("AUTH")) {
+				#ifdef MFTP_SSH
+				if (IsLastSentCmd("AUTH") && !tls_start(ci->cmd_socket, hi->hostname, hi->port, -1)) {
+					gui_status("ERROR: FTPS: TLS connection failed");
+					CleanSockAndFlags(cn);
+					break;
+				}
+				#endif
 				caf_strncpy(temp, "user ", 511);	
 				caf_strncat(temp, hi->username, 511);
 				SendFtpCommand(cn, temp, false);
 			} else if (IsLastSentCmd("pass")) {
 				cn->ci.b_pass_accepted = true;
+				if (hi->tls != TLS_NONE)
+					SendFtpCommand(cn, "PBSZ 0", false);
+				else
+					SendPWDCMD(cn);
+			} else if (IsLastSentCmd("PBSZ")) {
+				SendFtpCommand(cn, "PROT P", false);
+			} else if (IsLastSentCmd("PROT")) {
+				ci->b_prot_p = true;
+				gui_status("STATUS: FTPS: commands and data are encrypted");
 				SendPWDCMD(cn);
 			} else if (IsLastSentCmd("PWD")) {
 				GetPathFromRawData(cn->cmd_buffer.ptr);
@@ -1502,7 +1587,9 @@ void ProcessCommand(Connection *cn, int command)
 			// Transient Negative Completion reply;
 			cn->ci.b_can_send_command = true;
 /********************************************* DIGIT 4 *****************************************/
-			if (IsLastSentCmd("RETR") || IsLastSentCmd("LIST") || IsLastSentCmd("STOR")) {
+			if (IsLastSentCmd("AUTH") || IsLastSentCmd("PBSZ") || IsLastSentCmd("PROT")) {
+				FtpsRefused(cn);
+			} else if (IsLastSentCmd("RETR") || IsLastSentCmd("LIST") || IsLastSentCmd("STOR")) {
 				if (ci->port != 0)
 					snprintf(temp, 511, "STATUS: Server error encountered, Transfer failed, closed port %d", ci->port); 
 				else
@@ -1519,7 +1606,9 @@ void ProcessCommand(Connection *cn, int command)
 			// Permanent Negative Completion reply
 			cn->ci.b_can_send_command = true;
 /********************************************* DIGIT 5 *****************************************/
-			if (IsLastSentCmd("RETR") || IsLastSentCmd("LIST") || IsLastSentCmd("STOR")) {
+			if (IsLastSentCmd("AUTH") || IsLastSentCmd("PBSZ") || IsLastSentCmd("PROT")) {
+				FtpsRefused(cn);
+			} else if (IsLastSentCmd("RETR") || IsLastSentCmd("LIST") || IsLastSentCmd("STOR")) {
 				snprintf(temp, 511, "STATUS: Server error encountered, file unavailable, closed port %d", ci->port); 
 				gui_status(temp);
 				CloseListenSocket(cn);
@@ -2251,6 +2340,13 @@ void AcknowledgeConnection(Connection *cn)
 	if (CheckConnect(cn) == true) {
 		// We are connected
 		GetConnectionInfo(ci);
+		#ifdef MFTP_SSH
+		/* implicit FTPS: TLS before the greeting */
+		if (cn->hi.tls == TLS_IMPLICIT && !tls_start(ci->cmd_socket, cn->hi.hostname, cn->hi.port, -1)) {
+			gui_status("ERROR: FTPS: TLS connection failed");
+			CleanSockAndFlags(cn);
+		}
+		#endif
 	} else
 		CleanSockAndFlags(cn);
 }
@@ -2708,7 +2804,7 @@ static void LoadConfig(Connection *cn)
 		if (q && q + 4 <= qend) {
 			LONG t = get_le32(q);
 
-			h->conn_type = (t >= CTYPE_ACTV && t <= CTYPE_SFTP) ? (int) t : CTYPE_PASV;
+			h->conn_type = (t >= CTYPE_ACTV && t <= CTYPE_FTPS_IMPLICIT) ? (int) t : CTYPE_PASV;
 		}
 		g_AddressBook.used_hosts++;
 	}
@@ -2876,6 +2972,9 @@ void core_cleanup(void)
 	#ifdef MFTP_SSH
 	if (g_sftp)
 		SftpDisconnect(cn);
+	InvalidateSocket(&ci->cmd_socket);		/* FTPS: before AmiSSL goes */
+	InvalidateSocket(&ci->transfer_socket);
+	tls_cleanup();
 	csftp_cleanup();
 	if (g_sftp_buf)
 		FreeMem(g_sftp_buf, SFTP_READ_SIZE);
@@ -3311,6 +3410,7 @@ void core_run(void)
 	struct sockaddr sockaddr;
 	struct timeval timeout;
 	char temp[512];
+	bool tls_cmd, tls_data;
 
 	g_quit_now = false;
 	for (;;) {
@@ -3389,8 +3489,21 @@ void core_run(void)
 					#ifdef DEBUGLV3
 					DebugOutput("MainLoop(): WaitSelect()\n");
 					#endif
+					/* FTPS: data already inside TLS is not seen by WaitSelect() */
+					tls_cmd = cn->ci.b_connected && tls_pending(ci->cmd_socket);
+					tls_data = cn->ci.b_transfering && FD_ISSET(ci->transfer_socket, &readfd) && tls_pending(ci->transfer_socket);
+					if (tls_cmd || tls_data)
+						timeout.tv_secs = timeout.tv_micro = 0;
 					sel_sock = WaitSelect(highest_sock+1, &readfd, &writefd, &exceptfd, &timeout, &sigmask);
 					sigs = sigmask;
+					if ((tls_cmd || tls_data) && sel_sock >= 0) {
+						if (tls_cmd)
+							FD_SET(ci->cmd_socket, &readfd);
+						if (tls_data)
+							FD_SET(ci->transfer_socket, &readfd);
+						if (sel_sock == 0)
+							sel_sock = 1;
+					}
 					
 					if (sel_sock > 0) {
 						if (cn->ci.b_transfering == true) {
@@ -3516,7 +3629,7 @@ void core_run(void)
 									// connection before the file and ended up at the start of
 									// every file uploaded in passive mode (found on AmigaOS 3.1:
 									// a 20000 bytes file became 20002 bytes, "\n\n" + file)
-									if (!(cn->ci.b_file_transfer && cn->ci.b_file_download == false)) {
+									if (!(cn->ci.b_file_transfer && cn->ci.b_file_download == false) && cn->hi.tls == TLS_NONE) {
 										// ASD, this send has to be fixed ?
 										// should i wait for write flag in socket?
 										send(ci->transfer_socket, "\n\n", 2, 0);
@@ -3628,7 +3741,15 @@ void core_connect_host(int index)
 	hi->port = caf_atol(hst->port);
 	caf_strncpy(hi->username, hst->username, USERNAME_CONFIG_LEN);
 	caf_strncpy(hi->password, hst->password, PASSWORD_CONFIG_LEN);
-	hi->conn_type = hst->conn_type;
+	/* FTPS: passive data connections with TLS */
+	hi->tls = hst->conn_type == CTYPE_FTPS ? TLS_EXPLICIT : hst->conn_type == CTYPE_FTPS_IMPLICIT ? TLS_IMPLICIT : TLS_NONE;
+	hi->conn_type = hi->tls != TLS_NONE ? CTYPE_PASV : hst->conn_type;
+	#ifndef MFTP_SSH
+	if (hi->tls != TLS_NONE) {
+		gui_status("ERROR: this version has no FTPS support");
+		return;
+	}
+	#endif
 
 	if (cn->ci.b_connected)
 		gui_status("ERROR: Disconnect first!");

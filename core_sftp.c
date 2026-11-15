@@ -72,7 +72,7 @@ static Session g_sess = { -1, NULL };
 /* ---------------------------------------------------------------------------
  * AmiSSL
  * ------------------------------------------------------------------------- */
-static bool amissl_open(void)
+bool core_amissl_open(void)
 {
 	LONG err;
 
@@ -283,27 +283,33 @@ static bool hosts_add(const char *line)
 	return ok;
 }
 
-static int check_hostkey(void *ctx, const char *type, const char *fingerprint)
+int core_known_host(const char *host, int port, const char *type, const char *fingerprint)
 {
-	Session *s = (Session *) ctx;
 	char key[160], want[120], have[120], line[300];
 
-	sprintf(key, "%s:%d", s->host, s->port);
+	sprintf(key, "%.140s:%d", host, port);
 	sprintf(have, "%s %s", type, fingerprint);
 	hosts_find(key, want, sizeof(want));
 	if (!want[0]) {
 		sprintf(line, "%s %s\n", key, have);
-		gui_status(hosts_add(line) ? "STATUS: New SFTP server, its host key was saved in marranoftp.hosts"
-				   : "WARNING: cannot save the host key in marranoftp.hosts");
+		gui_status(hosts_add(line) ? "STATUS: New server, its key was saved in marranoftp.hosts"
+				   : "WARNING: cannot save the key in marranoftp.hosts");
 		return 1;
 	}
 	if (!strcmp(want, have))
 		return 1;
-	gui_status("ERROR: THE HOST KEY OF THIS SERVER HAS CHANGED! Connection refused.");
+	gui_status("ERROR: THE KEY OF THIS SERVER HAS CHANGED! Connection refused.");
 	sprintf(line, "ERROR: saved %.100s", want);
 	gui_status(line);
 	gui_status("ERROR: if the change is expected, remove its line from marranoftp.hosts");
 	return 0;
+}
+
+static int check_hostkey(void *ctx, const char *type, const char *fingerprint)
+{
+	Session *s = (Session *) ctx;
+
+	return core_known_host(s->host, s->port, type, fingerprint);
 }
 
 static void log_cb(void *ctx, const char *text)
@@ -332,7 +338,7 @@ Sftp *csftp_open(const char *host, int port, const char *user, const char *passw
 	me = (struct Process *) FindTask(NULL);
 	oldwin = me->pr_WindowPtr;
 	me->pr_WindowPtr = (APTR) -1;
-	f = amissl_open() ? open_session(host, port, user, password) : NULL;
+	f = core_amissl_open() ? open_session(host, port, user, password) : NULL;
 	me->pr_WindowPtr = oldwin;
 	return f;
 }

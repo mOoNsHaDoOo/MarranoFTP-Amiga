@@ -95,7 +95,8 @@ static struct NewMenu Menus[] = {
 	{ NM_END,   NULL, NULL, 0, 0, NULL }
 };
 
-static STRPTR ConnTypes[] = { (STRPTR) "Active", (STRPTR) "Passive", (STRPTR) "SFTP", NULL };
+static STRPTR ConnTypes[] = { (STRPTR) "Active", (STRPTR) "Passive", (STRPTR) "SFTP", (STRPTR) "FTPS",
+							  (STRPTR) "FTPS impl.", NULL };
 static STRPTR QueueTypes[] = { (STRPTR) "Stop at error", (STRPTR) "Process all", NULL };
 static STRPTR PartialTypes[] = { (STRPTR) "Delete", (STRPTR) "Keep", NULL };
 
@@ -350,7 +351,7 @@ static void ab_show(int index)
 	set_attrs(g_ab_str[2], win, GTST_String, (ULONG) h->port, TAG_DONE);
 	set_attrs(g_ab_str[3], win, GTST_String, (ULONG) h->username, TAG_DONE);
 	set_attrs(g_ab_str[4], win, GTST_String, (ULONG) h->password, TAG_DONE);
-	g_ab_conn_type = h->conn_type >= CTYPE_ACTV && h->conn_type <= CTYPE_SFTP ? h->conn_type : CTYPE_ACTV;
+	g_ab_conn_type = h->conn_type >= CTYPE_ACTV && h->conn_type <= CTYPE_FTPS_IMPLICIT ? h->conn_type : CTYPE_ACTV;
 	set_attrs(g_ab_type, win, GTCY_Active, g_ab_conn_type, TAG_DONE);
 }
 

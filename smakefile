@@ -11,7 +11,8 @@
 # The two OS 1.3 programs use smaller buffers (DEFINE=MFTP_SMALL) and share
 # gui_lines.c (text of the lists).
 #
-# SFTP (DEFINE=MFTP_SSH, all three programs): ssh.c, sftp.c, core_sftp.c.
+# SFTP and FTPS (DEFINE=MFTP_SSH, all three programs): ssh.c, sftp.c,
+# core_sftp.c (SFTP), tls.c (FTPS, explicit AUTH TLS and implicit).
 # The cryptography comes from AmiSSL 5.25+ at run time (AmigaOS 3.0+, 68020+,
 # about 3.5 MB of free memory); without AmiSSL only SFTP is unavailable.
 # To build, the AmiSSL SDK "Developer/include" directory must be in
@@ -38,7 +39,7 @@ CAFOBJS = CafLib/debugging.o CafLib/networking_helpers.o CafLib/thread_helpers.o
 
 all: MarranoFTP MarranoFTP13GD MarranoFTPI
 
-SSHOBJS = ssh.o sftp.o core_sftp.o
+SSHOBJS = ssh.o sftp.o core_sftp.o tls.o
 
 MarranoFTP: ftp_core.o ftp_list.o $(SSHOBJS) gui_mui.o $(CAFOBJS)
 	sc LINK TO MarranoFTP ftp_core.o ftp_list.o $(SSHOBJS) gui_mui.o $(CAFOBJS)
@@ -49,10 +50,10 @@ MarranoFTP13GD: ftp_core13.o ftp_list.o $(SSHOBJS) gui_gt.o gui_lines.o gt_bases
 MarranoFTPI: ftp_core13.o ftp_list.o $(SSHOBJS) gui_int.o gui_lines.o $(CAFOBJS)
 	sc LINK TO MarranoFTPI ftp_core13.o ftp_list.o $(SSHOBJS) gui_int.o gui_lines.o $(CAFOBJS)
 
-ftp_core.o: ftp_core.c core.h gui.h ftp_list.h core_sftp.h sftp.h
+ftp_core.o: ftp_core.c core.h gui.h ftp_list.h core_sftp.h sftp.h tls.h
 	sc ftp_core.c OBJNAME=ftp_core.o DEFINE=MFTP_SSH
 
-ftp_core13.o: ftp_core.c core.h gui.h ftp_list.h core_sftp.h sftp.h
+ftp_core13.o: ftp_core.c core.h gui.h ftp_list.h core_sftp.h sftp.h tls.h
 	sc ftp_core.c OBJNAME=ftp_core13.o DEFINE=MFTP_SMALL DEFINE=MFTP_SSH
 
 ftp_list.o: ftp_list.c ftp_list.h
@@ -66,6 +67,9 @@ sftp.o: sftp.c sftp.h ssh.h
 
 core_sftp.o: core_sftp.c core_sftp.h sftp.h ssh.h core.h gui.h
 	sc core_sftp.c OBJNAME=core_sftp.o
+
+tls.o: tls.c tls.h ssh_crypto.h core_sftp.h core.h gui.h
+	sc tls.c OBJNAME=tls.o
 
 gui_mui.o: gui_mui.c core.h gui.h
 	sc gui_mui.c OBJNAME=gui_mui.o

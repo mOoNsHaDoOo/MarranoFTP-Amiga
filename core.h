@@ -96,7 +96,9 @@ enum {
 	FLOW_CONTROL_ERROR
 };
 
-enum { CTYPE_ACTV, CTYPE_PASV, CTYPE_SFTP };
+/* address book connection types; FTPS uses passive data connections */
+enum { CTYPE_ACTV, CTYPE_PASV, CTYPE_SFTP, CTYPE_FTPS, CTYPE_FTPS_IMPLICIT };
+enum { TLS_NONE, TLS_EXPLICIT, TLS_IMPLICIT };
 enum { MAX_HOSTS = 128 };
 enum { OPT_DOWNLOAD_DELETE_PARTIAL, OPT_DOWNLOAD_KEEP_PARTIAL };
 enum { NUM_OF_SETTINGS = 6 };
@@ -169,7 +171,8 @@ typedef struct ClientInfo {
 			b_request_quit,
 			b_last_data,
 			b_processing_queue,
-			b_queue_step;
+			b_queue_step,
+			b_prot_p;				/* FTPS: data connections encrypted */
 } ClientInfo;
 
 #define ENTRYNAME_CONFIG_LEN 128
@@ -192,7 +195,8 @@ typedef struct HostInfo {
 	char ip_s[HOSTNAME_CONFIG_LEN];
 	int ip_i;
 	int port;
-	int conn_type;
+	int conn_type;				/* CTYPE_ACTV, CTYPE_PASV or CTYPE_SFTP */
+	int tls;					/* TLS_NONE, TLS_EXPLICIT (AUTH TLS), TLS_IMPLICIT */
 	CSOCK pasvsettings;
 	char username[USERNAME_CONFIG_LEN];
 	char password[PASSWORD_CONFIG_LEN];
