@@ -339,7 +339,7 @@ static int start(long sock, const char *host, int port, long reuse_from)
 	t->used = 1;
 	if (host && !is_ip(host)) {
 		SSL_ctrl(t->ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, (void *) host);
-		SSL_set1_host(t->ssl, host);
+		X509_VERIFY_PARAM_set1_host(SSL_get0_param(t->ssl), host, 0);
 	}
 	src = find(reuse_from);
 	if (src && src->ready && (sess = SSL_get1_session(src->ssl)) != NULL) {

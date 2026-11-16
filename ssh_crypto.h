@@ -24,7 +24,6 @@ typedef struct evp_md_ctx_st EVP_MD_CTX;
 typedef struct evp_pkey_st EVP_PKEY;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct engine_st ENGINE;
-typedef struct rsa_st RSA;
 typedef struct bignum_st BIGNUM;
 typedef struct bignum_ctx BN_CTX;
 
@@ -63,10 +62,7 @@ EVP_MD_CTX *EVP_MD_CTX_new(void);
 void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
 int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
 int EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret, size_t siglen, const unsigned char *tbs, size_t tbslen);
-RSA *RSA_new(void);
-void RSA_free(RSA *r);
-int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
-int RSA_verify(int type, const unsigned char *m, unsigned int m_length, const unsigned char *sigbuf, unsigned int siglen, RSA *rsa);
+EVP_PKEY *d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length);
 BIGNUM *BN_new(void);
 void BN_free(BIGNUM *a);
 BIGNUM *BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret);
@@ -121,7 +117,9 @@ int SSL_write(SSL *ssl, const void *buf, int num);
 int SSL_get_error(const SSL *s, int ret_code);
 int SSL_shutdown(SSL *s);
 long SSL_get_verify_result(const SSL *ssl);
-int SSL_set1_host(SSL *s, const char *hostname);
+typedef struct X509_VERIFY_PARAM_st X509_VERIFY_PARAM;
+X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
+int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param, const char *name, size_t namelen);
 long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg);
 SSL_SESSION *SSL_get1_session(SSL *ssl);
 int SSL_set_session(SSL *to, SSL_SESSION *session);
@@ -149,7 +147,6 @@ void ERR_error_string_n(unsigned long e, char *buf, size_t len);
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
-#include <openssl/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/obj_mac.h>
 #include <openssl/ssl.h>

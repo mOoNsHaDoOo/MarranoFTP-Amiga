@@ -13,10 +13,13 @@
 #
 # SFTP and FTPS (DEFINE=MFTP_SSH, all three programs): ssh.c, sftp.c,
 # core_sftp.c (SFTP), tls.c (FTPS, explicit AUTH TLS and implicit).
-# The cryptography comes from AmiSSL 5.25+ at run time (AmigaOS 3.0+, 68020+,
-# about 3.5 MB of free memory); without AmiSSL only SFTP is unavailable.
-# To build, the AmiSSL SDK "Developer/include" directory must be in
-# INCLUDE: (only its pragmas/ and libraries/amisslmaster.h are used).
+# The cryptography comes from AmiSSL 5.25+ or 6.x at run time (AmigaOS 3.0+,
+# 68020+, about 3.5 MB of free memory); without AmiSSL only SFTP and FTPS are
+# unavailable. To build, the AmiSSL SDK "Developer/include" directory must be
+# in INCLUDE: (only its pragmas/ and libraries/amisslmaster.h are used).
+# No AmiSSL link library is needed: the calls go through the SDK pragmas and
+# AmiSSL is opened at run time. The program uses the AmiSSL version of the SDK
+# it was built with: SDK 6.x -> AmiSSL 6 (OpenSSL 4), SDK 5.x -> AmiSSL 5.
 #
 # Requirements:
 #   - NDK 3.x includes (INCLUDE:)

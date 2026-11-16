@@ -84,8 +84,8 @@ directory, Parent, download, upload, delete, makedir e coda funzionano come con 
 | `core_sftp.c/h` | apertura di AmiSSL, socket con timeout, chiavi host note |
 | `tests/test_sftp_linux.c` | prova degli stessi `ssh.c`/`sftp.c` su Linux con OpenSSL |
 
-- **Requisiti a runtime**: AmigaOS 3.0+, 68020+, **AmiSSL 5.25 o più recente** installato
-  (`LIBS:amisslmaster.library`, `LIBS:AmiSSL/amissl_v3xx.library`, assign `AmiSSL:`),
+- **Requisiti a runtime**: AmigaOS 3.0+, 68020+, **AmiSSL 5.25+ o 6.x** installato
+  (`LIBS:amisslmaster.library`, `LIBS:AmiSSL/amissl_v3xx.library` o `amissl_v41x.library`, assign `AmiSSL:`),
   circa **3,5 MB di memoria libera** per AmiSSL. AmiSSL viene aperto solo alla prima
   connessione SFTP: senza AmiSSL (o su OS 1.3) i programmi funzionano lo stesso e
   segnalano solo che SFTP non è disponibile.
@@ -179,8 +179,13 @@ Per compilare:
   non fanno parte dell'SDK di MUI)
 - per **MarranoFTP13GD**: `GTE/GTE.lib` e `GTE/nl_gadtools.h`, già nel progetto
 - per **MarranoFTPI**: niente oltre all'NDK
-- per SFTP (tutti e tre): la cartella `Developer/include` dell'SDK di AmiSSL 5.25+ in `INCLUDE:`
-  (servono solo `pragmas/` e `libraries/amisslmaster.h`)
+- per SFTP e FTPS (tutti e tre): la cartella `Developer/include` dell'SDK di AmiSSL 5.25+ o 6.x
+  in `INCLUDE:` (servono solo `pragmas/` e `libraries/amisslmaster.h`). Non si linka nessuna
+  libreria di AmiSSL: le chiamate passano dai pragma e AmiSSL viene aperto a runtime.
+  Il programma usa la versione di AmiSSL dell'SDK con cui è compilato: con l'SDK 6.x
+  richiede AmiSSL 6 (OpenSSL 4), con l'SDK 5.x AmiSSL 5 (che l'installer di AmiSSL 6 lascia
+  al suo posto). Il codice usa solo funzioni presenti in tutti e due: niente `RSA_*` né
+  `SSL_set1_host`, tolte da AmiSSL 6.
 
 Per eseguire:
 

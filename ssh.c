@@ -639,14 +639,84 @@ static int parse_kexinit(Ssh *s)
 	return 1;
 }
 
+/* DER length of n bytes after a tag */
+static int der_len(unsigned char *o, int n)
+{
+	if (n < 128) {
+		o[0] = (unsigned char) n;
+		return 1;
+	}
+	if (n < 256) {
+		o[0] = 0x81;
+		o[1] = (unsigned char) n;
+		return 2;
+	}
+	o[0] = 0x82;
+	o[1] = (unsigned char) (n >> 8);
+	o[2] = (unsigned char) n;
+	return 3;
+}
+
+/* DER INTEGER from big endian unsigned bytes (no leading zeros) */
+static int der_int(unsigned char *o, const unsigned char *v, int n)
+{
+	int k, pad;
+
+	while (n > 1 && v[0] == 0) {
+		v++;
+		n--;
+	}
+	pad = n > 0 && (v[0] & 0x80) ? 1 : 0;
+	o[0] = 0x02;
+	k = 1 + der_len(o + 1, n + pad);
+	if (pad)
+		o[k++] = 0;
+	memcpy(o + k, v, n);
+	return k + n;
+}
+
+/* SubjectPublicKeyInfo of the RSA key (n, e): out needs n_n + e_n + 40 bytes */
+static int rsa_spki(unsigned char *out, const unsigned char *e, int e_n, const unsigned char *n, int n_n)
+{
+	static const unsigned char alg[] = {	/* rsaEncryption, NULL */
+		0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00
+	};
+	unsigned char ints[1024 + 40];
+	int il, k, l;
+
+	il = der_int(ints, n, n_n);
+	il += der_int(ints + il, e, e_n);
+	/* body: alg + BIT STRING(00 + SEQUENCE(ints)) */
+	k = 0;
+	out[k++] = 0x30;
+	{
+		unsigned char t[4];
+		int sl = 1 + der_len(t, il) + il;			/* SEQUENCE of the ints */
+		int bl = 1 + sl;							/* BIT STRING content */
+		int body = sizeof(alg) + 1 + der_len(t, bl) + bl;
+
+		k += der_len(out + k, body);
+		memcpy(out + k, alg, sizeof(alg));
+		k += sizeof(alg);
+		out[k++] = 0x03;
+		k += der_len(out + k, bl);
+		out[k++] = 0;
+		out[k++] = 0x30;
+		k += der_len(out + k, il);
+	}
+	l = k;
+	memcpy(out + l, ints, il);
+	return l + il;
+}
+
 /* Verifies the server signature of the exchange hash with its host key */
 static int verify_hostkey(Ssh *s, const unsigned char *ks, int ks_len, const unsigned char *sig, int sig_len,
 						  const unsigned char *h, int h_len)
 {
 	R rk, rs;
 	const unsigned char *type, *stype, *sg, *a, *b;
-	int type_n, stype_n, sg_n, a_n, b_n, ok = 0, nid, dlen, mlen;
-	unsigned char digest[64], fp[32], padded[1024];
+	int type_n, stype_n, sg_n, a_n, b_n, ok = 0, mlen;
+	unsigned char fp[32], padded[1024], der[1024 + 64];
 	unsigned int dl;
 	char text[160];
 
@@ -681,42 +751,39 @@ static int verify_hostkey(Ssh *s, const unsigned char *ks, int ks_len, const uns
 		if (pk)
 			EVP_PKEY_free(pk);
 	} else {
-		RSA *rsa;
-		BIGNUM *e, *n;
+		EVP_PKEY *pk = NULL;
+		EVP_MD_CTX *md;
+		const unsigned char *p;
+		int der_n;
 
 		a = r_str(&rk, &a_n);		/* e */
 		b = r_str(&rk, &b_n);		/* n */
 		if (!str_eq(type, type_n, "ssh-rsa") || rk.err || !str_eq(stype, stype_n, hostkey_names[s->hostkey]))
 			return fail(s, "bad rsa host key or signature");
-		nid = s->hostkey == HK_RSA_SHA256 ? NID_sha256 : s->hostkey == HK_RSA_SHA512 ? NID_sha512 : NID_sha1;
-		dl = 0;
-		EVP_Digest(h, h_len, digest, &dl, s->hostkey == HK_RSA_SHA256 ? EVP_sha256()
-				   : s->hostkey == HK_RSA_SHA512 ? EVP_sha512() : EVP_sha1(), NULL);
-		dlen = (int) dl;
 		while (b_n > 0 && b[0] == 0) {
 			b++;
 			b_n--;
 		}
 		mlen = b_n;
-		if (mlen > (int) sizeof(padded) || sg_n > mlen)
+		if (mlen > (int) sizeof(padded) || sg_n > mlen || a_n > 16)
 			return fail(s, "rsa key too large");
 		memset(padded, 0, mlen - sg_n);			/* signature as long as the modulus */
 		memcpy(padded + mlen - sg_n, sg, sg_n);
-		rsa = RSA_new();
-		e = BN_bin2bn(a, a_n, NULL);
-		n = BN_bin2bn(b, b_n, NULL);
-		if (rsa && e && n && RSA_set0_key(rsa, n, e, NULL) == 1) {
-			if (RSA_verify(nid, digest, dlen, padded, mlen, rsa) == 1)
-				ok = 1;
-			RSA_free(rsa);
-		} else {
-			if (rsa)
-				RSA_free(rsa);
-			if (e)
-				BN_free(e);
-			if (n)
-				BN_free(n);
-		}
+		/* the public key goes to OpenSSL as DER SubjectPublicKeyInfo: the
+		   RSA_* functions are deprecated in OpenSSL 3 and missing from some
+		   AmiSSL SDKs */
+		der_n = rsa_spki(der, a, a_n, b, b_n);
+		p = der;
+		pk = d2i_PUBKEY(NULL, &p, der_n);
+		md = EVP_MD_CTX_new();
+		if (pk && md && EVP_DigestVerifyInit(md, NULL, s->hostkey == HK_RSA_SHA256 ? EVP_sha256()
+											 : s->hostkey == HK_RSA_SHA512 ? EVP_sha512() : EVP_sha1(), NULL, pk) == 1
+			&& EVP_DigestVerify(md, padded, mlen, h, h_len) == 1)
+			ok = 1;
+		if (md)
+			EVP_MD_CTX_free(md);
+		if (pk)
+			EVP_PKEY_free(pk);
 	}
 	if (!ok)
 		return fail(s, "the server host key signature is not valid");
